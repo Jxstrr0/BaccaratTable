@@ -139,19 +139,19 @@ export function buildRoom(scene, lib, manager) {
   skyTex.wrapS = THREE.RepeatWrapping;
   skyTex.repeat.x = -1;
   skyTex.offset.x = 1;
-  const skyGeo = new THREE.SphereGeometry(80, 128, 48, Math.PI, Math.PI, THREE.MathUtils.degToRad(18), THREE.MathUtils.degToRad(70.74));
+  const skyGeo = new THREE.SphereGeometry(80, 64, 24, Math.PI, Math.PI, THREE.MathUtils.degToRad(18), THREE.MathUtils.degToRad(70.74));
   const sky = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, color: new THREE.Color(0.8, 0.8, 0.85), fog: false }));
   sky.position.copy(eye);
   group.add(sky);
   const ground = new THREE.Mesh(
-    new THREE.SphereGeometry(80, 128, 16, Math.PI, Math.PI, THREE.MathUtils.degToRad(88.74), THREE.MathUtils.degToRad(45)),
+    new THREE.SphereGeometry(80, 64, 8, Math.PI, Math.PI, THREE.MathUtils.degToRad(88.74), THREE.MathUtils.degToRad(45)),
     new THREE.MeshBasicMaterial({ map: cityLightsTexture(), side: THREE.BackSide, fog: false }),
   );
   ground.position.copy(eye);
   group.add(ground);
   // Upper sky above the crop: deep night gradient.
   const upper = new THREE.Mesh(
-    new THREE.SphereGeometry(80.5, 64, 12, Math.PI, Math.PI, 0, THREE.MathUtils.degToRad(18.5)),
+    new THREE.SphereGeometry(80.5, 32, 4, Math.PI, Math.PI, 0, THREE.MathUtils.degToRad(18.5)),
     new THREE.MeshBasicMaterial({ color: 0x1b1730, side: THREE.BackSide, fog: false }),
   );
   upper.position.copy(eye);
@@ -267,7 +267,7 @@ export function buildRoom(scene, lib, manager) {
   buildBar(group, wood, brass);
 
   // --- Lounge corner: sofa, coffee table and arc lamp, front-left.
-  const velvet = lib.pbr('velour_velvet', { repeat: [3, 3], color: new THREE.Color(0.12, 0.3, 0.27), roughness: 1, physical: true, sheen: 1, sheenColor: new THREE.Color(0.25, 0.55, 0.48), sheenRoughness: 0.4 });
+  const velvet = lib.pbr('velour_velvet', { repeat: [3, 3], color: new THREE.Color(0.12, 0.3, 0.27), roughness: 1 });
   const sofa = new THREE.Group();
   const seat = new THREE.Mesh(new RoundedBoxGeometry(2.4, 0.42, 0.95, 4, 0.08), velvet);
   seat.position.y = 0.21;
@@ -362,19 +362,20 @@ export function buildRoom(scene, lib, manager) {
 
 function buildTumbler(y) {
   const g = new THREE.Group();
-  const crystal = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff, roughness: 0.02, transmission: 1, thickness: 0.006, ior: 1.52, transparent: true,
+  // Plain transparency rather than transmission: transmission re-renders the whole scene every frame.
+  const crystal = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.22, envMapIntensity: 2.5, depthWrite: false,
   });
   const profile = [[0, 0], [0.036, 0], [0.038, 0.004], [0.04, 0.085], [0.037, 0.085], [0.035, 0.012], [0, 0.012]].map(([r, h]) => new THREE.Vector2(r, h));
   const glass = new THREE.Mesh(new THREE.LatheGeometry(profile, 48), crystal);
   const whisky = new THREE.Mesh(
     new THREE.CylinderGeometry(0.0345, 0.0345, 0.03, 48),
-    new THREE.MeshPhysicalMaterial({ color: 0xb8651d, roughness: 0.05, transmission: 0.6, thickness: 0.03, transparent: true, opacity: 0.92 }),
+    new THREE.MeshStandardMaterial({ color: 0xb8651d, roughness: 0.05, transparent: true, opacity: 0.85, emissive: 0x3a1a05, emissiveIntensity: 0.6 }),
   );
   whisky.position.y = 0.028;
   const ice = new THREE.Mesh(
     new RoundedBoxGeometry(0.03, 0.03, 0.03, 2, 0.005),
-    new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.15, transmission: 1, thickness: 0.02, transparent: true }),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, transparent: true, opacity: 0.45 }),
   );
   ice.position.y = 0.04;
   ice.rotation.set(0.3, 0.6, 0.2);
@@ -395,6 +396,7 @@ function buildBar(group, wood, brass) {
   bar.add(kick);
   // Back shelves with bottles.
   const colors = [0x7a3b12, 0x2e4d1e, 0xd8cfb0, 0x4a1020, 0xa5671f, 0x1d2a3a, 0xc0a060];
+  const bottleMats = colors.map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.05, transparent: true, opacity: 0.8 }));
   for (const sy of [1.45, 1.95]) {
     const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.025, 0.28), brass);
     shelf.position.set(0, sy, 0.38);
@@ -405,7 +407,7 @@ function buildBar(group, wood, brass) {
       const profile = [[0, 0], [r, 0], [r, h * 0.62], [r * 0.4, h * 0.8], [r * 0.32, h], [0, h]].map(([a, b]) => new THREE.Vector2(a, b));
       const bottle = new THREE.Mesh(
         new THREE.LatheGeometry(profile, 24),
-        new THREE.MeshPhysicalMaterial({ color: colors[i % colors.length], roughness: 0.05, transmission: 0.55, thickness: 0.05, transparent: true }),
+        bottleMats[i % bottleMats.length],
       );
       bottle.position.set(-1.65 + i * 0.25, sy + 0.013, 0.38);
       bar.add(bottle);

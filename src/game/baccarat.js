@@ -118,7 +118,7 @@ export function outcome(player, banker) {
   return { playerTotal: p, bankerTotal: b, winner: p > b ? 'player' : b > p ? 'banker' : 'tie' };
 }
 
-export const BET_KEYS = ['player', 'banker', 'tie', 'playerPair', 'bankerPair', 'dragonPlayer', 'dragonBanker'];
+export const BET_KEYS = ['player', 'banker', 'tie', 'playerPair', 'bankerPair'];
 
 export const PAYOUTS = {
   player: '1 : 1',
@@ -126,27 +126,7 @@ export const PAYOUTS = {
   tie: '8 : 1',
   playerPair: '11 : 1',
   bankerPair: '11 : 1',
-  dragonPlayer: 'up to 30 : 1',
-  dragonBanker: 'up to 30 : 1',
 };
-
-// Dragon Bonus: natural win 1:1, natural tie push, non-natural wins pay by margin.
-function dragon(side, result) {
-  const mine = result[side];
-  const theirs = result[side === 'player' ? 'banker' : 'player'];
-  const myTotal = handTotal(mine);
-  const theirTotal = handTotal(theirs);
-  const won = result.winner === side;
-  if (isNatural(mine)) {
-    if (won) return 1;
-    if (result.winner === 'tie') return 0; // push
-    return -1;
-  }
-  if (!won) return -1;
-  const margin = myTotal - theirTotal;
-  const table = { 9: 30, 8: 10, 7: 6, 6: 4, 5: 2, 4: 1 };
-  return table[margin] ?? -1;
-}
 
 // Returns, per bet key, the net multiplier: >0 win (profit = stake × m), 0 push, -1 lose.
 export function settlementMultipliers(result) {
@@ -157,8 +137,6 @@ export function settlementMultipliers(result) {
     tie: winner === 'tie' ? 8 : -1,
     playerPair: isPair(result.player) ? 11 : -1,
     bankerPair: isPair(result.banker) ? 11 : -1,
-    dragonPlayer: dragon('player', result),
-    dragonBanker: dragon('banker', result),
   };
 }
 

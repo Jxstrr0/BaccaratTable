@@ -12,7 +12,12 @@ export class Stage {
     this.manager = manager;
 
     const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // Render scale starts at up to 1.5× and adapts to the frame rate (see adapt()).
+    this.maxPixelRatio = Math.min(window.devicePixelRatio, 1.5);
+    this.pixelRatio = this.maxPixelRatio;
+    this.frameTimes = [];
+    this.goodWindows = 0;
+    renderer.setPixelRatio(this.pixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -56,6 +61,32 @@ export class Stage {
     this.scene.environment = env;
     this.scene.environmentIntensity = 0.35;
     this.scene.environmentRotation.y = Math.PI * 0.5;
+  }
+
+  // Adaptive resolution: every 60 frames, drop the render scale if we're under ~45 fps and
+  // raise it again after a few comfortably smooth windows. Bloom goes last, only at the floor.
+  adapt(dt) {
+    if (dt > 0.25) return; // tab switches and hitches aren't representative
+    this.frameTimes.push(dt);
+    if (this.frameTimes.length < 60) return;
+    const avg = this.frameTimes.reduce((s, t) => s + t, 0) / this.frameTimes.length;
+    this.frameTimes.length = 0;
+    if (avg > 1 / 45) {
+      this.goodWindows = 0;
+      if (this.pixelRatio > 0.75) this.setPixelRatio(this.pixelRatio - 0.25);
+      else this.bloom.enabled = false;
+    } else if (avg < 1 / 58 && ++this.goodWindows >= 3) {
+      this.goodWindows = 0;
+      if (!this.bloom.enabled) this.bloom.enabled = true;
+      else if (this.pixelRatio < this.maxPixelRatio) this.setPixelRatio(this.pixelRatio + 0.25);
+    }
+  }
+
+  setPixelRatio(ratio) {
+    this.pixelRatio = Math.min(this.maxPixelRatio, Math.max(0.75, ratio));
+    this.renderer.setPixelRatio(this.pixelRatio);
+    this.composer.setPixelRatio(this.pixelRatio);
+    this.resize();
   }
 
   resize() {

@@ -96,14 +96,4 @@ describe('settlement', () => {
     const r = { player: [c('8', 'H'), c('8', 'S')], banker: [c('2'), c('3')], winner: 'banker' };
     expect(settle({ playerPair: 100, bankerPair: 100 }, r).net).toBe(1100 - 100);
   });
-  it('pays dragon bonus by margin and on naturals', () => {
-    const nineMargin = { player: [c('4'), c('3'), c('2')], banker: [c('K'), c('Q'), c('10')], winner: 'player' };
-    expect(settle({ dragonPlayer: 100 }, nineMargin).lines.dragonPlayer.profit).toBe(3000);
-    const smallWin = { player: [c('4'), c('2'), c('A')], banker: [c('3'), c('3'), c('K')], winner: 'player' };
-    expect(settle({ dragonPlayer: 100 }, smallWin).lines.dragonPlayer.profit).toBe(-100);
-    const naturalTie = { player: [c('4'), c('4')], banker: [c('8'), c('K')], winner: 'tie' };
-    expect(settle({ dragonBanker: 100 }, naturalTie).lines.dragonBanker.returned).toBe(100);
-    const naturalWin = { player: [c('4'), c('4')], banker: [c('7'), c('K')], winner: 'player' };
-    expect(settle({ dragonPlayer: 100 }, naturalWin).lines.dragonPlayer.profit).toBe(100);
-  });
 });

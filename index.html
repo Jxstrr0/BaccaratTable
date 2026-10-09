@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Penthouse Baccarat</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b3d2e' stroke='%23d9b56a' stroke-width='4'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23d9b56a' font-family='Georgia'%3EP%3C/text%3E%3C/svg%3E" />
-    <meta name="description" content="A private high-limit baccarat table in a night-time penthouse. Squeeze your own cards." />
+    <meta name="description" content="A private high-limit baccarat table in a night-time penthouse. Your own croupier, your own skyline." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -21,7 +21,7 @@
         <div class="progress"><div id="progress-bar"></div></div>
         <div id="progress-label">Preparing the salon…</div>
         <button id="enter" class="gold-btn" disabled>Take your seat</button>
-        <p class="fine">Best with headphones. Left-click to bet · right-drag to look around.</p>
+        <p class="fine">Best with headphones. Click or tap to bet · right-drag or swipe to look around.</p>
       </div>
     </div>
 
@@ -40,7 +40,6 @@
 
       <div id="settings" class="panel settings hidden">
         <h3>Settings</h3>
-        <label class="toggle"><input type="checkbox" id="opt-squeeze" checked /> <span>Squeeze my cards</span></label>
         <label class="toggle"><input type="checkbox" id="opt-voice" checked /> <span>Dealer voice</span></label>
         <label class="toggle"><input type="checkbox" id="opt-sound" checked /> <span>Sound</span></label>
         <label class="slider"><span>Music</span><input type="range" id="opt-music" min="0" max="1" step="0.01" value="0.35" /></label>
@@ -70,14 +69,6 @@
         </div>
       </div>
 
-      <div id="squeeze-bar" class="bottom hidden">
-        <div class="hint">Drag from a card’s edge or corner toward its centre to squeeze it. Double-click to flip it.</div>
-        <div class="actions">
-          <button class="ghost-btn" id="btn-rotate" title="Rotate (Q)">Rotate card</button>
-          <button class="gold-btn" id="btn-reveal" title="Reveal (F)">Reveal</button>
-        </div>
-      </div>
-
       <div id="hint" class="hint-line">Left-click a betting spot to place the selected chip · right-click to take one back · right-drag to look around · scroll to lean in</div>
     </div>
 
@@ -91,10 +82,9 @@
           <tr><td>Banker</td><td>0.95 : 1 (5% commission)</td></tr>
           <tr><td>Tie</td><td>8 : 1 (Player and Banker bets push)</td></tr>
           <tr><td>Player / Banker Pair</td><td>11 : 1 when the first two cards pair</td></tr>
-          <tr><td>Dragon Bonus</td><td>Natural win 1:1 · win by 9 → 30:1, 8 → 10:1, 7 → 6:1, 6 → 4:1, 5 → 2:1, 4 → 1:1</td></tr>
         </table>
-        <p><b>The squeeze.</b> As the only player, you hold the largest bet, so the dealer passes you the cards of the side you backed. Peel each one up slowly from an edge to see the pips before it turns over.</p>
-        <p class="fine">Keys: <b>1–5</b> chips · <b>Space</b> deal · <b>R</b> rebet · <b>D</b> double · <b>C</b> clear · <b>Backspace</b> undo · <b>F</b> reveal · <b>Q</b> rotate card</p>
+        <p class="fine">Touch: tap a spot to bet · press and hold to take a chip back · drag to look around · pinch to lean in.</p>
+        <p class="fine">Keys: <b>1–5</b> chips · <b>Space</b> deal · <b>R</b> rebet · <b>D</b> double · <b>C</b> clear · <b>Backspace</b> undo</p>
         <button class="gold-btn" id="btn-help-close">Back to the table</button>
       </div>
     </div>

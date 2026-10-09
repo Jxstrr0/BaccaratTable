@@ -18,8 +18,7 @@ export class Dealer {
     this.nextBlink = 2;
 
     const tux = lib.pbr('velour_velvet', {
-      physical: true, repeat: [4, 4], useDiffuse: false, color: new THREE.Color(0.018, 0.018, 0.022),
-      roughness: 0.9, sheen: 0.35, sheenColor: new THREE.Color(0.05, 0.05, 0.06), sheenRoughness: 0.6,
+      repeat: [4, 4], useDiffuse: false, color: new THREE.Color(0.022, 0.022, 0.026), roughness: 0.9,
     });
     const satin = new THREE.MeshPhysicalMaterial({ color: 0x050505, roughness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.2 });
     const shirt = new THREE.MeshStandardMaterial({ color: 0xf2f0ea, roughness: 0.65 });
@@ -172,19 +171,6 @@ export class Dealer {
       };
     }
 
-    // Wooden baccarat paddle, shown when pushing cards to the player.
-    const paddleMat = lib.pbr('dark_wood', { repeat: [1, 4], roughness: 0.5, color: new THREE.Color(1.3, 1.1, 0.95) });
-    this.paddle = new THREE.Group();
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.009, 1, 12), paddleMat);
-    shaft.rotation.x = Math.PI / 2;
-    shaft.position.z = 0.5;
-    const blade = new THREE.Mesh(new RoundedBoxGeometry(0.11, 0.006, 0.06, 2, 0.003), paddleMat);
-    blade.position.z = 1.0;
-    this.paddle.add(shaft, blade);
-    this.paddle.visible = false;
-    this.paddleTarget = new THREE.Vector3();
-    this.root.add(this.paddle);
-
     this.lookTarget = new THREE.Vector3(0, 1.2, 1.1);
     this.headDir = new THREE.Vector2();
     this.lean = 0;
@@ -257,11 +243,6 @@ export class Dealer {
     this.lookTarget.copy(world);
   }
 
-  showPaddle(visible, world) {
-    this.paddle.visible = visible;
-    if (world) this.paddleTarget.copy(world);
-  }
-
   // A small bow of the head, e.g. when announcing a result.
   async nod() {
     const base = this.head.rotation.x;
@@ -310,7 +291,6 @@ export class Dealer {
 
     this.root.updateMatrixWorld(true);
     for (const arm of Object.values(this.arms)) this.solveArm(arm, dt);
-    this.updatePaddle();
   }
 
   solveArm(arm) {
@@ -367,16 +347,5 @@ export class Dealer {
     mesh.position.copy(from).addScaledVector(dir, 0.5);
     mesh.quaternion.setFromUnitVectors(Y_AXIS, dir.normalize());
     mesh.scale.set(1, len / (mesh.geometry.parameters.height || len), 1);
-  }
-
-  updatePaddle() {
-    if (!this.paddle.visible) return;
-    const hand = this.arms.right.hand.position;
-    const target = this.toLocal(this.paddleTarget);
-    const dir = target.clone().sub(hand);
-    const len = Math.max(0.2, dir.length());
-    this.paddle.position.copy(hand);
-    this.paddle.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize());
-    this.paddle.scale.set(1, 1, len);
   }
 }

@@ -1,17 +1,16 @@
 import * as THREE from 'three';
 import { Shoe, playCoup, handTotal, settle, isPair, isNatural, BET_KEYS } from './baccarat.js';
-import { Squeeze } from './squeeze.js';
 import { Card3D } from '../scene/cards.js';
 import { ChipStack, DENOMS, breakdown } from '../scene/chips.js';
 import {
-  TABLE_Y, ZONES, zoneAt, zoneCenter, CARD_SPOTS, DISCARD_POS, FLOAT_POS, SQUEEZE_POS, PLAYER_CHIPS,
+  TABLE_Y, ZONES, zoneAt, zoneCenter, CARD_SPOTS, DISCARD_POS, FLOAT_POS, PLAYER_CHIPS,
 } from '../scene/layout.js';
 import { tween, wait, ease, setTimeScale } from '../util/tween.js';
 import { money } from '../ui/hud.js';
 
 const STORE = 'penthouse-baccarat-v1';
 const START_BANKROLL = 100000;
-const LIMITS = { player: 100000, banker: 100000, tie: 10000, playerPair: 10000, bankerPair: 10000, dragonPlayer: 10000, dragonBanker: 10000 };
+const LIMITS = { player: 100000, banker: 100000, tie: 10000, playerPair: 10000, bankerPair: 10000 };
 const SIDE_NAME = { player: 'Player', banker: 'Banker' };
 const ZONE_BY_KEY = Object.fromEntries(ZONES.map((z) => [z.key, z]));
 
@@ -23,7 +22,7 @@ function loadState() {
   }
 }
 
-// Orchestrates a private Punto Banco table: betting, dealing, the squeeze, settlement.
+// Orchestrates a private Punto Banco table: betting, dealing, the reveal, settlement.
 export class Game {
   constructor({ stage, table, dealer, rig, audio, hud }) {
     Object.assign(this, { stage, table, dealer, rig, audio, hud });
@@ -34,9 +33,12 @@ export class Game {
 
     const saved = loadState();
     this.balance = Number.isFinite(saved.balance) ? saved.balance : START_BANKROLL;
-    this.settings = { squeeze: true, voice: true, sound: true, music: 0.35, sfx: 0.8, fast: false, ...saved.settings };
+    this.settings = { voice: true, sound: true, music: 0.35, sfx: 0.8, fast: false, ...saved.settings };
     this.stats = { hands: 0, biggestWin: 0, ...saved.stats, sessionNet: 0 };
-    this.lastBets = saved.lastBets || null;
+    // Keep only bets that still exist on the layout (older saves may hold retired side bets).
+    this.lastBets = saved.lastBets
+      ? Object.fromEntries(Object.entries(saved.lastBets).filter(([k, v]) => BET_KEYS.includes(k) && v > 0))
+      : null;
     this.tutorialDone = !!saved.tutorialDone;
     this.history = [];
 
@@ -62,14 +64,14 @@ export class Game {
     });
     this.rebuildPlayerStacks();
 
-    this.squeeze = new Squeeze({ camera: this.camera, dom: this.dom, audio });
     this.ray = new THREE.Raycaster();
     this.ndc = new THREE.Vector2();
     this.hoverZone = null;
 
     this.dom.addEventListener('pointermove', (e) => this.onPointerMove(e));
-    this.dom.addEventListener('pointerdown', (e) => { this.downAt = { x: e.clientX, y: e.clientY, button: e.button }; });
+    this.dom.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     this.dom.addEventListener('pointerup', (e) => this.onPointerUp(e));
+    this.dom.addEventListener('pointercancel', () => this.cancelLongPress());
     window.addEventListener('keydown', (e) => this.onKey(e));
 
     this.applySettings();
@@ -117,7 +119,7 @@ export class Game {
   refreshHud() {
     const hasBets = this.onTable > 0;
     this.hud.setBalance(this.balance, this.onTable);
-    const phase = this.state === 'squeeze' ? 'squeeze' : this.state === 'betting' ? 'betting' : 'dealing';
+    const phase = this.state === 'betting' ? 'betting' : 'dealing';
     const lastTotal = this.lastBets ? Object.values(this.lastBets).reduce((s, v) => s + v, 0) : 0;
     this.hud.setPhase(phase, { canDeal: hasBets, hasBets, canRebet: lastTotal > 0 && lastTotal <= this.balance, showHint: !this.tutorialDone });
   }
@@ -256,8 +258,32 @@ export class Game {
     return hit ? hit.object.userData.denom : null;
   }
 
+  onPointerDown(e) {
+    this.downAt = { x: e.clientX, y: e.clientY, button: e.button, touch: e.pointerType === 'touch' };
+    this.longPressed = false;
+    this.cancelLongPress();
+    if (e.pointerType !== 'touch' || this.state !== 'betting') return;
+    // Touch stand-in for right-click: press and hold a betting spot to take a chip back.
+    const p = this.feltPoint(e);
+    const zone = p ? zoneAt(p.x, p.z) : null;
+    if (!zone || !this.betStacks[zone.key].chips.length) return;
+    this.longPressTimer = setTimeout(() => {
+      if (this.rig.dragging || this.rig.multiTouch) return;
+      this.longPressed = true;
+      navigator.vibrate?.(12);
+      this.takeBack(zone.key);
+    }, 520);
+  }
+
+  cancelLongPress() {
+    clearTimeout(this.longPressTimer);
+    this.longPressTimer = null;
+  }
+
   onPointerMove(e) {
-    if (this.state !== 'betting' || this.rig.dragging) {
+    const d = this.downAt;
+    if (d?.touch && Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 10) this.cancelLongPress();
+    if (this.state !== 'betting' || this.rig.dragging || e.pointerType === 'touch') {
       this.hoverZone = null;
       return;
     }
@@ -269,8 +295,12 @@ export class Game {
   }
 
   onPointerUp(e) {
+    this.cancelLongPress();
     const d = this.downAt;
-    if (!d || Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 6) return;
+    const slop = d?.touch ? 10 : 6;
+    if (!d || Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > slop) return;
+    // Pinches, look-drags and long-presses are not taps.
+    if (this.longPressed || (d.touch && (this.rig.multiTouch || this.rig.dragging))) return;
     if (this.state === 'betting') this.audio.start();
     if (this.state !== 'betting') return;
     const p = this.feltPoint(e);
@@ -289,11 +319,6 @@ export class Game {
   onKey(e) {
     if (e.target instanceof HTMLInputElement) return;
     const k = e.key.toLowerCase();
-    if (this.state === 'squeeze') {
-      if (k === 'f') this.squeeze.revealAll();
-      if (k === 'q') this.squeeze.rotate();
-      return;
-    }
     if (this.state !== 'betting') return;
     if (k >= '1' && k <= '5') this.selectChip(DENOMS[Number(k) - 1]);
     else if (k === ' ' || k === 'enter') { e.preventDefault(); this.deal(); }
@@ -332,7 +357,6 @@ export class Game {
     if (this.shoe.cutReached) await this.newShoe();
 
     const coup = playCoup(() => this.shoe.draw());
-    const squeezeSide = this.settings.squeeze ? (this.bets.banker > this.bets.player ? 'banker' : 'player') : null;
 
     // Two cards each, alternating, face down.
     for (const step of coup.steps.slice(0, 4)) {
@@ -341,8 +365,7 @@ export class Game {
     await this.dealer.restBoth(0.35);
 
     for (const side of ['player', 'banker']) {
-      if (side === squeezeSide) await this.squeezeCards(side, [0, 1]);
-      else await this.dealerReveal(side, [0, 1]);
+      await this.dealerReveal(side, [0, 1]);
       const cards = coup[side].slice(0, 2);
       const total = handTotal(cards);
       this.hud.toast(`${SIDE_NAME[side]} ${total}${isNatural(cards) ? ' — natural' : ''}`);
@@ -354,8 +377,7 @@ export class Game {
       this.say(`${SIDE_NAME[step.side]} draws.`);
       await this.dealCard(step.side, step.index, coup[step.side][step.index]);
       await this.dealer.rest('right', 0.3);
-      if (step.side === squeezeSide) await this.squeezeCards(step.side, [step.index]);
-      else await this.dealerReveal(step.side, [step.index]);
+      await this.dealerReveal(step.side, [step.index]);
       const total = handTotal(coup[step.side]);
       this.hud.toast(`${SIDE_NAME[step.side]} ${total}`);
       await wait(0.7);
@@ -429,59 +451,6 @@ export class Game {
       await this.flipCard(c3);
     }
     await this.dealer.rest(arm, 0.35);
-  }
-
-  // The dealer pushes the cards across with the paddle; the player squeezes them; they go back face up.
-  async squeezeCards(side, indices) {
-    const cards = indices.map((i) => this.cards[side][i]);
-    const spots = indices.map((i) => CARD_SPOTS[side][i]);
-    const targets = cards.length === 2
-      ? [new THREE.Vector3(SQUEEZE_POS.x - 0.055, 0, SQUEEZE_POS.z), new THREE.Vector3(SQUEEZE_POS.x + 0.055, 0, SQUEEZE_POS.z)]
-      : [new THREE.Vector3(SQUEEZE_POS.x, 0, SQUEEZE_POS.z)];
-    targets.forEach((t, i) => { t.y = TABLE_Y + 0.0008 + i * 0.0003; });
-
-    await this.paddleMove(cards, targets, cards.map(() => 0));
-    this.say(`${SIDE_NAME[side]}'s cards, for you.`);
-
-    this.state = 'squeeze';
-    this.refreshHud();
-    this.rig.moveTo('squeeze', 0.9);
-    this.hud.toast('Squeeze: drag from an edge toward the centre', 3);
-    await this.squeeze.run(cards);
-    await wait(0.8);
-    this.state = 'dealing';
-    this.refreshHud();
-    await this.rig.moveTo('seat', 0.8);
-
-    const back = spots.map((s, i) => new THREE.Vector3(s.x, TABLE_Y + 0.0008 + indices[i] * 0.0003, s.z));
-    await this.paddleMove(cards, back, spots.map((s) => s.rot));
-  }
-
-  async paddleMove(cards, targets, rotations) {
-    const froms = cards.map((c) => c.root.position.clone());
-    const r0 = cards.map((c) => c.root.rotation.y);
-    const lead = new THREE.Vector3();
-    this.dealer.showPaddle(true, froms[0]);
-    this.dealer.look(froms[0]);
-    // Swing the paddle out to the cards first.
-    await this.dealer.reach('right', new THREE.Vector3(0.12, TABLE_Y + 0.12, -0.42), 0.3);
-    this.audio.cardSlide();
-    await tween({
-      duration: 0.85,
-      easing: ease.inOut,
-      update: (k) => {
-        cards.forEach((c, i) => {
-          c.root.position.lerpVectors(froms[i], targets[i], k);
-          c.root.rotation.y = r0[i] + (rotations[i] - r0[i]) * k;
-        });
-        lead.copy(cards[0].root.position);
-        if (cards[1]) lead.lerp(cards[1].root.position, 0.5);
-        this.dealer.paddleTarget.copy(lead).add(new THREE.Vector3(0, 0.01, -0.05));
-        this.dealer.look(lead);
-      },
-    });
-    this.dealer.showPaddle(false);
-    await this.dealer.rest('right', 0.35);
   }
 
   async resolve(coup) {

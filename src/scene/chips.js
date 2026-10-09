@@ -7,27 +7,52 @@ export const DENOMS = [100, 500, 1000, 5000, 25000];
 export const CHIP_R = 0.0215;
 export const CHIP_T = 0.0037;
 
-const geometry = new THREE.CylinderGeometry(CHIP_R, CHIP_R, CHIP_T, 64, 1);
+// Face and edge artwork share one atlas so each chip is a single draw call:
+// the face occupies the top FACE_PX rows, the edge strip the bottom EDGE_PX rows.
+const FACE_PX = 512;
+const EDGE_PX = 64;
+const ATLAS_H = FACE_PX + EDGE_PX;
+
+const geometry = (() => {
+  const geo = new THREE.CylinderGeometry(CHIP_R, CHIP_R, CHIP_T, 40, 1);
+  const uv = geo.attributes.uv;
+  const edgeV = EDGE_PX / ATLAS_H;
+  // Group 0 is the side wall, groups 1–2 the caps; each group owns its vertices.
+  for (const group of geo.groups) {
+    const side = group.materialIndex === 0;
+    const seen = new Set();
+    for (let i = group.start; i < group.start + group.count; i++) {
+      const idx = geo.index.getX(i);
+      if (seen.has(idx)) continue;
+      seen.add(idx);
+      const v = uv.getY(idx);
+      uv.setY(idx, side ? v * edgeV : edgeV + v * (1 - edgeV));
+    }
+  }
+  geo.clearGroups();
+  return geo;
+})();
 const materials = new Map();
 
-function chipMaterials(denom, anisotropy) {
+function chipMaterial(denom, anisotropy) {
   if (!materials.has(denom)) {
     const { face, edge } = makeChipTextures(denom);
-    face.anisotropy = anisotropy;
-    edge.anisotropy = anisotropy;
-    edge.wrapS = THREE.RepeatWrapping;
-    const common = { roughness: 0.42, clearcoat: 0.45, clearcoatRoughness: 0.35 };
-    materials.set(denom, [
-      new THREE.MeshPhysicalMaterial({ map: edge, ...common }),
-      new THREE.MeshPhysicalMaterial({ map: face, ...common }),
-      new THREE.MeshPhysicalMaterial({ map: face, ...common }),
-    ]);
+    const atlas = document.createElement('canvas');
+    atlas.width = FACE_PX;
+    atlas.height = ATLAS_H;
+    const g = atlas.getContext('2d');
+    g.drawImage(face.image, 0, 0, FACE_PX, FACE_PX);
+    g.drawImage(edge.image, 0, FACE_PX, FACE_PX, EDGE_PX);
+    const map = new THREE.CanvasTexture(atlas);
+    map.colorSpace = THREE.SRGBColorSpace;
+    map.anisotropy = anisotropy;
+    materials.set(denom, new THREE.MeshStandardMaterial({ map, roughness: 0.4 }));
   }
   return materials.get(denom);
 }
 
 export function makeChip(denom, anisotropy = 8) {
-  const mesh = new THREE.Mesh(geometry, chipMaterials(denom, anisotropy));
+  const mesh = new THREE.Mesh(geometry, chipMaterial(denom, anisotropy));
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.rotation.y = Math.random() * Math.PI * 2;

@@ -47,8 +47,6 @@ async function boot() {
     undo: () => game.undo(),
     rebet: () => game.rebet(),
     double: () => game.double(),
-    reveal: () => game.squeeze.revealAll(),
-    rotate: () => game.squeeze.rotate(),
     resetBankroll: () => game.resetBankroll(),
     setting: (k, v) => game.setting(k, v),
   });
@@ -71,7 +69,9 @@ async function boot() {
   timer.connect(document);
   stage.renderer.setAnimationLoop(() => {
     timer.update();
-    const dt = window.__fixedDt ?? Math.min(timer.getDelta(), 0.1);
+    const realDt = timer.getDelta();
+    const dt = window.__fixedDt ?? Math.min(realDt, 0.1);
+    if (window.__fixedDt == null) stage.adapt(realDt);
     tickTweens(dt);
     rig.update(dt);
     dealer.update(dt);
@@ -87,6 +87,7 @@ async function boot() {
   enter.addEventListener('click', async () => {
     audio.start();
     $('loader').classList.add('hidden');
+    if (window.matchMedia('(pointer: coarse)').matches) hud.useTouchHints();
     hud.show();
     game.start();
   }, { once: true });

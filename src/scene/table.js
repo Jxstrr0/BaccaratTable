@@ -164,7 +164,7 @@ function paintFelt() {
 
   // Centre medallion and wordmark.
   const mx = px(0);
-  const mz = pz(-0.075);
+  const mz = pz(0.05);
   g.strokeStyle = GOLD;
   g.lineWidth = 5;
   g.beginPath();
@@ -188,11 +188,11 @@ function paintFelt() {
   g.letterSpacing = '22px';
   g.font = serif(54, '500');
   g.fillStyle = 'rgba(233,207,138,0.85)';
-  g.fillText('PENTHOUSE', mx, mz - 175);
+  g.fillText('PENTHOUSE', mx, mz - 240);
   g.letterSpacing = '10px';
   g.font = sans(24, '500');
   g.fillStyle = 'rgba(233,207,138,0.6)';
-  g.fillText('PRIVATE SALON  ·  PUNTO BANCO', mx, mz - 118);
+  g.fillText('PRIVATE SALON  ·  PUNTO BANCO', mx, mz - 180);
   g.letterSpacing = '6px';
   g.font = sans(22, '500');
   g.fillText('TABLE LIMITS  100 — 100,000', px(0), pz(-0.52));
@@ -272,8 +272,7 @@ export function buildTable(lib, anisotropy) {
 
   // Padded leather rail along the player's arc.
   const leather = lib.pbr('brown_leather', {
-    physical: true, repeat: [8, 1], color: new THREE.Color(0.32, 0.24, 0.2), roughness: 0.9,
-    sheen: 0.4, sheenColor: new THREE.Color(0.3, 0.22, 0.18),
+    repeat: [8, 1], color: new THREE.Color(0.34, 0.26, 0.22), roughness: 0.85,
   });
   const railPts = outlinePoints({ a: (OUTER.a + FELT.a) / 2 + 0.005, b: (OUTER.b + FELT.b) / 2 + 0.005, edge: DEALER_EDGE }, 120)
     .slice(6, -6)
@@ -342,8 +341,8 @@ export function buildTable(lib, anisotropy) {
 
   // Discard holder: clear acrylic box.
   const discard = new THREE.Group();
-  const glass = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff, roughness: 0.05, transmission: 1, thickness: 0.01, ior: 1.49, transparent: true,
+  const glass = new THREE.MeshStandardMaterial({
+    color: 0xffffff, roughness: 0.05, transparent: true, opacity: 0.18, depthWrite: false,
   });
   const box = new THREE.Mesh(new THREE.BoxGeometry(CARD_W + 0.02, 0.06, CARD_H + 0.02), glass);
   box.position.y = TABLE_Y + 0.03;

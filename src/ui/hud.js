@@ -26,14 +26,12 @@ export class Hud {
     on('btn-undo', () => handlers.undo());
     on('btn-rebet', () => handlers.rebet());
     on('btn-double', () => handlers.double());
-    on('btn-reveal', () => handlers.reveal());
-    on('btn-rotate', () => handlers.rotate());
     on('btn-settings', () => $('settings').classList.toggle('hidden'));
     on('btn-help', () => $('help').classList.remove('hidden'));
     on('btn-help-close', () => $('help').classList.add('hidden'));
     on('btn-reset', () => handlers.resetBankroll());
 
-    for (const id of ['opt-squeeze', 'opt-voice', 'opt-sound', 'opt-fast']) {
+    for (const id of ['opt-voice', 'opt-sound', 'opt-fast']) {
       $(id).addEventListener('change', () => handlers.setting(id.slice(4), $(id).checked));
     }
     for (const id of ['opt-music', 'opt-sfx']) {
@@ -41,12 +39,16 @@ export class Hud {
     }
   }
 
+  // Swap mouse wording for touch wording on phones and tablets.
+  useTouchHints() {
+    $('hint').textContent = 'Tap a spot to bet · hold to take a chip back · drag to look around · pinch to lean in';
+  }
+
   show() {
     $('hud').classList.remove('hidden');
   }
 
   applySettings(s) {
-    $('opt-squeeze').checked = s.squeeze;
     $('opt-voice').checked = s.voice;
     $('opt-sound').checked = s.sound;
     $('opt-fast').checked = s.fast;
@@ -70,10 +72,8 @@ export class Hud {
     for (const [d, b] of this.chipButtons) b.classList.toggle('selected', d === denom);
   }
 
-  // phase: 'betting' | 'dealing' | 'squeeze'
+  // phase: 'betting' | 'dealing'
   setPhase(phase, { canDeal = false, canRebet = false, hasBets = false, showHint = true } = {}) {
-    $('bet-bar').classList.toggle('hidden', phase === 'squeeze');
-    $('squeeze-bar').classList.toggle('hidden', phase !== 'squeeze');
     const betting = phase === 'betting';
     $('btn-deal').disabled = !(betting && canDeal);
     $('btn-clear').disabled = !(betting && hasBets);

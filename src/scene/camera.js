@@ -4,11 +4,12 @@ import { tween, ease } from '../util/tween.js';
 export const POSES = {
   intro: { pos: new THREE.Vector3(3.2, 1.75, 4.2), target: new THREE.Vector3(0, 0.9, -0.2) },
   seat: { pos: new THREE.Vector3(0, 1.3, 1.32), target: new THREE.Vector3(0, 0.81, -0.28) },
-  squeeze: { pos: new THREE.Vector3(0, 1.02, 0.76), target: new THREE.Vector3(0, 0.76, 0.445) },
 };
 
-// First-person seat camera: right-drag to look around, wheel to lean in,
-// plus a slight head sway that follows the pointer.
+const TOUCH_SLOP = 8; // px a finger may wander before a tap becomes a drag
+
+// First-person seat camera. Mouse: right-drag to look around, wheel to lean in, and a slight
+// head sway that follows the pointer. Touch: one-finger drag to look, pinch to lean in.
 export class SeatCamera {
   constructor(camera, dom) {
     this.camera = camera;
@@ -22,10 +23,19 @@ export class SeatCamera {
     this.pointer = new THREE.Vector2();
     this.dragging = false;
     this.dragMoved = 0;
-    this.locked = false;
     this.time = 0;
 
+    // Touch state.
+    this.touches = new Map();
+    this.touchLook = null;
+    this.pinchDist = 0;
+    this.multiTouch = false;
+
     dom.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') {
+        this.touchDown(e);
+        return;
+      }
       if (e.button === 2 || e.button === 1) {
         this.dragging = true;
         this.dragMoved = 0;
@@ -33,25 +43,79 @@ export class SeatCamera {
       }
     });
     window.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') {
+        this.touchMove(e);
+        return;
+      }
       this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
       if (!this.dragging) return;
       const dx = e.clientX - this.last.x;
       const dy = e.clientY - this.last.y;
       this.dragMoved += Math.abs(dx) + Math.abs(dy);
       this.last = { x: e.clientX, y: e.clientY };
-      this.yaw = THREE.MathUtils.clamp(this.yaw - dx * 0.0035, -1.9, 1.9);
-      this.pitch = THREE.MathUtils.clamp(this.pitch - dy * 0.0035, -0.6, 0.75);
+      this.look(dx, dy, 0.0035);
     });
-    window.addEventListener('pointerup', () => { this.dragging = false; });
+    const up = (e) => {
+      if (e.pointerType === 'touch') this.touchUp(e);
+      else this.dragging = false;
+    };
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
     dom.addEventListener('contextmenu', (e) => e.preventDefault());
     dom.addEventListener('wheel', (e) => {
       this.zoom = THREE.MathUtils.clamp(this.zoom - e.deltaY * 0.0006, -0.15, 0.35);
     }, { passive: true });
   }
 
-  // Did the last right-button press turn into a drag (vs a click)?
-  get wasDrag() {
-    return this.dragMoved > 6;
+  look(dx, dy, sensitivity) {
+    this.yaw = THREE.MathUtils.clamp(this.yaw - dx * sensitivity, -1.9, 1.9);
+    this.pitch = THREE.MathUtils.clamp(this.pitch - dy * sensitivity, -0.6, 0.75);
+  }
+
+  touchDown(e) {
+    this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.touches.size === 1) {
+      this.multiTouch = false;
+      this.touchLook = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: 0 };
+    } else if (this.touches.size === 2) {
+      // Second finger: switch to pinch and stop looking.
+      this.multiTouch = true;
+      this.touchLook = null;
+      this.dragging = false;
+      this.pinchDist = this.touchSpread();
+    }
+  }
+
+  touchMove(e) {
+    if (!this.touches.has(e.pointerId)) return;
+    this.touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.touches.size >= 2) {
+      const d = this.touchSpread();
+      this.zoom = THREE.MathUtils.clamp(this.zoom + (d - this.pinchDist) * 0.0012, -0.15, 0.35);
+      this.pinchDist = d;
+      return;
+    }
+    const t = this.touchLook;
+    if (!t || t.id !== e.pointerId) return;
+    const dx = e.clientX - t.x;
+    const dy = e.clientY - t.y;
+    t.x = e.clientX;
+    t.y = e.clientY;
+    t.moved += Math.abs(dx) + Math.abs(dy);
+    if (t.moved < TOUCH_SLOP) return;
+    this.dragging = true;
+    this.look(dx, dy, 0.005);
+  }
+
+  touchUp(e) {
+    this.touches.delete(e.pointerId);
+    if (this.touchLook?.id === e.pointerId) this.touchLook = null;
+    if (!this.touches.size) this.dragging = false;
+  }
+
+  touchSpread() {
+    const [a, b] = [...this.touches.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
   resetLook(duration = 0.6) {

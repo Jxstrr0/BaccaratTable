@@ -23,8 +23,6 @@ export const ZONES = [
   { key: 'playerPair', label: 'P PAIR', sub: '11 TO 1', r0: 0.97, r1: 1.15, a0: -38 * deg, a1: -15 * deg, color: '#2f6fd6' },
   { key: 'tie', label: 'TIE', sub: '8 TO 1', r0: 0.97, r1: 1.15, a0: -13.5 * deg, a1: 13.5 * deg, color: '#2fa36b' },
   { key: 'bankerPair', label: 'B PAIR', sub: '11 TO 1', r0: 0.97, r1: 1.15, a0: 15 * deg, a1: 38 * deg, color: '#d43a3a' },
-  { key: 'dragonPlayer', label: 'DRAGON · P', sub: 'UP TO 30 TO 1', r0: 1.18, r1: 1.3, a0: -38 * deg, a1: -2 * deg, color: '#c9a24a' },
-  { key: 'dragonBanker', label: 'DRAGON · B', sub: 'UP TO 30 TO 1', r0: 1.18, r1: 1.3, a0: 2 * deg, a1: 38 * deg, color: '#c9a24a' },
 ];
 
 export function polarToXZ(r, a) {
@@ -60,5 +58,4 @@ export const CARD_SPOTS = {
 export const SHOE_POS = { x: 0.78, z: -0.36 };
 export const DISCARD_POS = { x: -0.8, z: -0.4 };
 export const FLOAT_POS = { x: 0, z: -0.5 }; // dealer's chip float
-export const SQUEEZE_POS = { x: 0, z: 0.47 }; // where the squeezer works the cards
 export const PLAYER_CHIPS = { x: 0, z: 0.665, spacing: 0.1 }; // player's bankroll stacks along the rail
