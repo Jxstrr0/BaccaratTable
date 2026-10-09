@@ -411,10 +411,12 @@ export class AudioEngine {
     this._dispose(oscs[1][0], [lp, env, ...oscs.flat(), ...out.nodes]);
   }
 
-  speak(text) {
-    if (!this.ctx || this._muted || !this.voiceEnabled || !text) return;
+  // Callbacks let the dealer animate along with its voice: onStart/onEnd bracket the
+  // utterance, onBoundary fires on each word. Returns false if nothing was spoken.
+  speak(text, { onStart, onEnd, onBoundary } = {}) {
+    if (!this.ctx || this._muted || !this.voiceEnabled || !text) return false;
     const synth = this._synth();
-    if (!synth) return;
+    if (!synth) return false;
     try {
       synth.cancel();
       const u = new SpeechSynthesisUtterance(String(text));
@@ -430,13 +432,18 @@ export class AudioEngine {
       u.volume = clamp(this._sfxVol, 0.2, 1);
       const done = () => {
         if (this._utter === u) this._utter = null;
+        onEnd?.();
       };
       u.onend = done;
       u.onerror = done;
+      if (onStart) u.onstart = onStart;
+      if (onBoundary) u.onboundary = onBoundary;
       this._utter = u; // keep a reference; some browsers GC live utterances
       synth.speak(u);
+      return true;
     } catch (e) {
       /* speech is best-effort */
+      return false;
     }
   }
 

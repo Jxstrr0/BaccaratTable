@@ -124,8 +124,16 @@ export class Game {
     this.hud.setPhase(phase, { canDeal: hasBets, hasBets, canRebet: lastTotal > 0 && lastTotal <= this.balance, showHint: !this.tutorialDone });
   }
 
+  // The dealer's speaking light follows the voice: word events pulse it, and a length-based
+  // estimate keeps it going when the voice is muted or reports nothing.
   say(text) {
-    this.audio.speak(text);
+    const seconds = 0.3 + text.length * 0.062;
+    this.dealer.talk(seconds);
+    this.audio.speak(text, {
+      onStart: () => this.dealer.talk(seconds),
+      onBoundary: () => this.dealer.syllable(),
+      onEnd: () => this.dealer.stopTalking(),
+    });
   }
 
   // ---- Chips on the rail --------------------------------------------------
@@ -354,6 +362,7 @@ export class Game {
     this.hud.hideBanner();
     this.say('No more bets.');
 
+    while (this.dealer.busyGesture) await wait(0.1);
     if (this.shoe.cutReached) await this.newShoe();
 
     const coup = playCoup(() => this.shoe.draw());
@@ -410,7 +419,9 @@ export class Game {
     this.cards[side][index] = c3;
     const spot = CARD_SPOTS[side][index];
     this.dealer.look(mouth);
+    this.dealer.setGrip('right', 0.2);
     await this.dealer.reach('right', mouth.clone().add(new THREE.Vector3(0, 0.03, 0)), 0.28);
+    this.dealer.setGrip('right', 0.5);
     this.dealer.follow('right', c3.root, new THREE.Vector3(0, 0.035, 0));
     this.dealer.look(new THREE.Vector3(spot.x, TABLE_Y, spot.z));
     this.audio.cardSlide();
@@ -426,6 +437,7 @@ export class Game {
       },
     });
     this.dealer.release('right');
+    this.dealer.setGrip('right', 0.1);
   }
 
   async flipCard(c3) {
@@ -447,10 +459,28 @@ export class Game {
       const c3 = this.cards[side][i];
       const p = c3.root.position.clone();
       this.dealer.look(p);
+      this.dealer.setGrip(arm, 0.2);
       await this.dealer.reach(arm, p.clone().add(new THREE.Vector3(0, 0.04, -0.03)), 0.16);
+      this.dealer.setGrip(arm, 0.5);
       await this.flipCard(c3);
+      this.dealer.setGrip(arm, 0.1);
     }
     await this.dealer.rest(arm, 0.25);
+  }
+
+  // Open palm toward the winning hand (both hands on a tie).
+  async presentWinner(winner) {
+    const centre = (side) => {
+      const spots = CARD_SPOTS[side].slice(0, 2);
+      return new THREE.Vector3((spots[0].x + spots[1].x) / 2, TABLE_Y, spots[0].z);
+    };
+    if (winner === 'tie') {
+      await Promise.all([this.dealer.present('left', centre('player'), 0.7), this.dealer.present('right', centre('banker'), 0.7)]);
+    } else {
+      this.dealer.look(centre(winner));
+      await this.dealer.present(winner === 'player' ? 'left' : 'right', centre(winner), 0.7);
+      this.dealer.look(this.camera.position);
+    }
   }
 
   async resolve(coup) {
@@ -462,6 +492,7 @@ export class Game {
     this.say(winner === 'tie' ? `Tie, ${p} all.` : `${SIDE_NAME[winner]} wins, ${Math.max(p, b)} over ${Math.min(p, b)}.`);
     this.dealer.look(this.camera.position);
     this.dealer.nod();
+    await this.presentWinner(winner);
 
     // Glow every winning spot.
     for (const [key, line] of Object.entries(settle(Object.fromEntries(BET_KEYS.map((k) => [k, 1])), coup).lines)) {
@@ -497,6 +528,8 @@ export class Game {
       }
     }
     if (jobs.length) {
+      this.dealer.setGrip('left', -0.25);
+      this.dealer.setGrip('right', -0.25);
       this.dealer.reach('left', new THREE.Vector3(-0.2, TABLE_Y + 0.05, FLOAT_POS.z + 0.08), 0.5);
       this.dealer.reach('right', new THREE.Vector3(0.2, TABLE_Y + 0.05, FLOAT_POS.z + 0.08), 0.5);
     }
@@ -534,21 +567,43 @@ export class Game {
   }
 
   async collectCards() {
-    await wait(0.8);
+    await wait(0.6);
     this.hud.hideBanner();
     const all = [...this.cards.player, ...this.cards.banker].filter(Boolean);
     const target = new THREE.Vector3(DISCARD_POS.x, TABLE_Y + 0.02, DISCARD_POS.z);
-    this.dealer.reach('left', new THREE.Vector3(-0.35, TABLE_Y + 0.04, -0.3), 0.4);
+    const gather = new THREE.Vector3(0, TABLE_Y + 0.003, -0.34);
+    // Both hands come down behind their hands' cards, palms flat, and sweep them to the middle.
+    const over = (side) => {
+      const s0 = CARD_SPOTS[side][0];
+      const s1 = CARD_SPOTS[side][1];
+      return new THREE.Vector3((s0.x + s1.x) / 2 + (side === 'player' ? -0.05 : 0.05), TABLE_Y + 0.035, s0.z - 0.06);
+    };
+    this.dealer.setGrip('left', 0);
+    this.dealer.setGrip('right', 0);
+    await Promise.all([this.dealer.reach('left', over('player'), 0.3), this.dealer.reach('right', over('banker'), 0.3)]);
     this.audio.cardSlide();
-    // Gather to the centre, then into the discard holder.
-    const gather = new THREE.Vector3(-0.3, TABLE_Y + 0.003, -0.32);
     const froms = all.map((c) => c.root.position.clone());
+    const handFrom = {
+      left: this.dealer.arms.left.target.clone(),
+      right: this.dealer.arms.right.target.clone(),
+    };
+    const handTo = {
+      left: this.dealer.toLocal(gather.clone().add(new THREE.Vector3(-0.07, 0.035, -0.04))),
+      right: this.dealer.toLocal(gather.clone().add(new THREE.Vector3(0.07, 0.035, -0.04))),
+    };
     await tween({
-      duration: 0.5,
-      update: (k) => all.forEach((c, i) => c.root.position.lerpVectors(froms[i], gather.clone().setY(gather.y + i * 0.0004), k)),
+      duration: 0.45,
+      update: (k) => {
+        all.forEach((c, i) => c.root.position.lerpVectors(froms[i], gather.clone().setY(gather.y + i * 0.0004), k));
+        this.dealer.arms.left.target.lerpVectors(handFrom.left, handTo.left, k);
+        this.dealer.arms.right.target.lerpVectors(handFrom.right, handTo.right, k);
+      },
     });
-    await this.dealer.reach('left', target.clone().add(new THREE.Vector3(0.05, 0.03, 0)), 0.4);
+    // The left hand carries the stack to the discard holder.
+    this.dealer.rest('right', 0.4);
+    this.dealer.setGrip('left', 0.45);
     const mids = all.map((c) => c.root.position.clone());
+    this.dealer.reach('left', target.clone().add(new THREE.Vector3(0.05, 0.03, 0)), 0.4);
     await tween({
       duration: 0.4,
       update: (k) => all.forEach((c, i) => {
@@ -610,6 +665,7 @@ export class Game {
       const glow = h.glow ? 0.16 + Math.sin(t * 4) * 0.06 : 0;
       h.mesh.material.opacity = Math.max(h.hover * 0.11, glow);
     }
+    this.dealer.setIdle(this.state === 'betting');
     if (this.state === 'betting' || this.state === 'intro' || this.state === 'seating') {
       this.dealer.look(this.camera.position);
     }
