@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Penthouse Baccarat</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b3d2e' stroke='%23d9b56a' stroke-width='4'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23d9b56a' font-family='Georgia'%3EP%3C/text%3E%3C/svg%3E" />
+    <meta name="description" content="A private high-limit baccarat table in a night-time penthouse. Squeeze your own cards." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="loader" class="overlay">
+      <div class="loader-card">
+        <div class="brand">PENTHOUSE</div>
+        <div class="brand-sub">Private Salon · Punto Banco</div>
+        <div class="progress"><div id="progress-bar"></div></div>
+        <div id="progress-label">Preparing the salon…</div>
+        <button id="enter" class="gold-btn" disabled>Take your seat</button>
+        <p class="fine">Best with headphones. Left-click to bet · right-drag to look around.</p>
+      </div>
+    </div>
+
+    <div id="hud" class="hidden">
+      <div class="top-left panel">
+        <div class="label">Bankroll</div>
+        <div id="balance" class="balance">$0</div>
+        <div class="row small"><span>On the table</span><span id="bet-total">$0</span></div>
+        <div class="row small"><span>Last hand</span><span id="last-net">—</span></div>
+      </div>
+
+      <div class="top-right">
+        <button class="icon-btn" id="btn-help" title="How to play">?</button>
+        <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
+      </div>
+
+      <div id="settings" class="panel settings hidden">
+        <h3>Settings</h3>
+        <label class="toggle"><input type="checkbox" id="opt-squeeze" checked /> <span>Squeeze my cards</span></label>
+        <label class="toggle"><input type="checkbox" id="opt-voice" checked /> <span>Dealer voice</span></label>
+        <label class="toggle"><input type="checkbox" id="opt-sound" checked /> <span>Sound</span></label>
+        <label class="slider"><span>Music</span><input type="range" id="opt-music" min="0" max="1" step="0.01" value="0.35" /></label>
+        <label class="slider"><span>Effects</span><input type="range" id="opt-sfx" min="0" max="1" step="0.01" value="0.8" /></label>
+        <label class="toggle"><input type="checkbox" id="opt-fast" /> <span>Fast dealing</span></label>
+        <div class="stats" id="stats"></div>
+        <button class="ghost-btn" id="btn-reset">Reset bankroll</button>
+      </div>
+
+      <div id="road" class="panel road">
+        <div class="label">Bead road</div>
+        <div id="road-grid"></div>
+        <div class="row small counts"><span id="cnt-p" class="p">P 0</span><span id="cnt-b" class="b">B 0</span><span id="cnt-t" class="t">T 0</span></div>
+      </div>
+
+      <div id="banner" class="banner"></div>
+      <div id="toast" class="toast"></div>
+
+      <div id="bet-bar" class="bottom">
+        <div id="chips" class="chips"></div>
+        <div class="actions">
+          <button class="ghost-btn" id="btn-undo" title="Undo (Backspace)">Undo</button>
+          <button class="ghost-btn" id="btn-clear" title="Clear (C)">Clear</button>
+          <button class="ghost-btn" id="btn-rebet" title="Rebet (R)">Rebet</button>
+          <button class="ghost-btn" id="btn-double" title="Double (D)">×2</button>
+          <button class="gold-btn" id="btn-deal" title="Deal (Space)">Deal</button>
+        </div>
+      </div>
+
+      <div id="squeeze-bar" class="bottom hidden">
+        <div class="hint">Drag from a card’s edge or corner toward its centre to squeeze it. Double-click to flip it.</div>
+        <div class="actions">
+          <button class="ghost-btn" id="btn-rotate" title="Rotate (Q)">Rotate card</button>
+          <button class="gold-btn" id="btn-reveal" title="Reveal (F)">Reveal</button>
+        </div>
+      </div>
+
+      <div id="hint" class="hint-line">Left-click a betting spot to place the selected chip · right-click to take one back · right-drag to look around · scroll to lean in</div>
+    </div>
+
+    <div id="help" class="overlay hidden">
+      <div class="panel help">
+        <h2>Punto Banco</h2>
+        <p>Bet on which hand finishes closer to <b>9</b>: Player or Banker. Cards 2–9 count at face value, aces count 1, and tens and court cards count 0. Only the last digit of the total counts, so 7 + 8 = 5.</p>
+        <p>The dealer follows fixed drawing rules. Either hand totalling 8 or 9 on two cards is a <i>natural</i>, and the coup ends there. Otherwise Player draws on 0–5, and Banker draws according to the tableau.</p>
+        <table>
+          <tr><td>Player</td><td>1 : 1</td></tr>
+          <tr><td>Banker</td><td>0.95 : 1 (5% commission)</td></tr>
+          <tr><td>Tie</td><td>8 : 1 (Player and Banker bets push)</td></tr>
+          <tr><td>Player / Banker Pair</td><td>11 : 1 when the first two cards pair</td></tr>
+          <tr><td>Dragon Bonus</td><td>Natural win 1:1 · win by 9 → 30:1, 8 → 10:1, 7 → 6:1, 6 → 4:1, 5 → 2:1, 4 → 1:1</td></tr>
+        </table>
+        <p><b>The squeeze.</b> As the only player, you hold the largest bet, so the dealer passes you the cards of the side you backed. Peel each one up slowly from an edge to see the pips before it turns over.</p>
+        <p class="fine">Keys: <b>1–5</b> chips · <b>Space</b> deal · <b>R</b> rebet · <b>D</b> double · <b>C</b> clear · <b>Backspace</b> undo · <b>F</b> reveal · <b>Q</b> rotate card</p>
+        <button class="gold-btn" id="btn-help-close">Back to the table</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
