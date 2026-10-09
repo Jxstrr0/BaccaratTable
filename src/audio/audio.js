@@ -49,7 +49,6 @@ const KEYS = [0, 5, 10, 3, 7, 2]; // C F Bb Eb G D
 export class AudioEngine {
   constructor() {
     this.ctx = null;
-    this.voiceEnabled = true;
 
     this._muted = false;
     this._musicVol = 0.35;
@@ -71,7 +70,6 @@ export class AudioEngine {
     this._amb = null;
     this._hum = null;
     this._timer = null;
-    this._utter = null;
   }
 
   // ---------------------------------------------------------------- public
@@ -86,7 +84,6 @@ export class AudioEngine {
 
   setMuted(m) {
     this._muted = !!m;
-    if (this._muted) this._cancelSpeech();
     if (this.ctx) this._ramp(this.master.gain, this._muted ? 0 : 0.9, 0.02);
   }
 
@@ -411,42 +408,6 @@ export class AudioEngine {
     this._dispose(oscs[1][0], [lp, env, ...oscs.flat(), ...out.nodes]);
   }
 
-  // Callbacks let the dealer animate along with its voice: onStart/onEnd bracket the
-  // utterance, onBoundary fires on each word. Returns false if nothing was spoken.
-  speak(text, { onStart, onEnd, onBoundary } = {}) {
-    if (!this.ctx || this._muted || !this.voiceEnabled || !text) return false;
-    const synth = this._synth();
-    if (!synth) return false;
-    try {
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(String(text));
-      const v = this._pickVoice(synth);
-      if (v) {
-        u.voice = v;
-        u.lang = v.lang;
-      } else {
-        u.lang = 'en-US';
-      }
-      u.rate = 0.95;
-      u.pitch = 0.9;
-      u.volume = clamp(this._sfxVol, 0.2, 1);
-      const done = () => {
-        if (this._utter === u) this._utter = null;
-        onEnd?.();
-      };
-      u.onend = done;
-      u.onerror = done;
-      if (onStart) u.onstart = onStart;
-      if (onBoundary) u.onboundary = onBoundary;
-      this._utter = u; // keep a reference; some browsers GC live utterances
-      synth.speak(u);
-      return true;
-    } catch (e) {
-      /* speech is best-effort */
-      return false;
-    }
-  }
-
   startAmbience() {
     this._ambWanted = true;
     if (!this.ctx || this._ambOn) return;
@@ -509,7 +470,6 @@ export class AudioEngine {
   dispose() {
     this.stopAmbience();
     this.cardPeelEnd();
-    this._cancelSpeech();
     const ctx = this.ctx;
     this.ctx = null;
     if (ctx) ctx.close().catch(() => {});
@@ -701,58 +661,6 @@ export class AudioEngine {
       }
     }
     return buf;
-  }
-
-  _synth() {
-    try {
-      if (
-        typeof window !== 'undefined' &&
-        window.speechSynthesis &&
-        typeof window.SpeechSynthesisUtterance !== 'undefined'
-      ) {
-        return window.speechSynthesis;
-      }
-    } catch (e) {
-      /* fall through */
-    }
-    return null;
-  }
-
-  _cancelSpeech() {
-    const s = this._synth();
-    this._utter = null;
-    if (!s) return;
-    try {
-      s.cancel();
-    } catch (e) {
-      /* ignore */
-    }
-  }
-
-  _pickVoice(synth) {
-    let voices = [];
-    try {
-      voices = synth.getVoices() || [];
-    } catch (e) {
-      return null;
-    }
-    const bad = /fred|zarvox|bad news|good news|bells|whisper|albert|boing|bubbles|cellos|deranged|hysterical|junior|kathy|organ|princess|ralph|trinoids|superstar|wobble|jester|grandma|grandpa|eddy|flo|reed|rocko|sandy|shelley/i;
-    const nice = /natural|neural|premium|enhanced|daniel|samantha|karen|moira|serena|oliver|google uk english|aria|guy|jenny|libby|ryan|alex/i;
-    let best = null;
-    let bestScore = 0;
-    for (const v of voices) {
-      if (!/^en([-_]|$)/i.test(v.lang || '')) continue;
-      let s = 1;
-      if (bad.test(v.name)) s -= 10;
-      if (nice.test(v.name)) s += 3;
-      if (/^en[-_](GB|US|AU|IE)/i.test(v.lang)) s += 1;
-      if (v.default) s += 0.5;
-      if (s > bestScore) {
-        best = v;
-        bestScore = s;
-      }
-    }
-    return best;
   }
 
   // One clay-chip impact: noise tick + resonant ring + short low body.

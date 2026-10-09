@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Shoe, playCoup, handTotal, settle, isPair, isNatural, BET_KEYS } from './baccarat.js';
+import { Shoe, playCoup, handTotal, settle, isPair, isNatural, cardValue, BET_KEYS } from './baccarat.js';
 import { Card3D } from '../scene/cards.js';
 import { ChipStack, DENOMS, breakdown } from '../scene/chips.js';
 import {
@@ -33,7 +33,7 @@ export class Game {
 
     const saved = loadState();
     this.balance = Number.isFinite(saved.balance) ? saved.balance : START_BANKROLL;
-    this.settings = { voice: true, sound: true, music: 0.35, sfx: 0.8, fast: false, ...saved.settings };
+    this.settings = { sound: true, music: 0.35, sfx: 0.8, fast: false, ...saved.settings };
     this.stats = { hands: 0, biggestWin: 0, ...saved.stats, sessionNet: 0 };
     // Keep only bets that still exist on the layout (older saves may hold retired side bets).
     this.lastBets = saved.lastBets
@@ -97,7 +97,6 @@ export class Game {
   applySettings() {
     const s = this.settings;
     this.hud.applySettings(s);
-    this.audio.voiceEnabled = s.voice;
     this.audio.setMuted(!s.sound);
     this.audio.setMusicVolume(s.music);
     this.audio.setSfxVolume(s.sfx);
@@ -124,16 +123,25 @@ export class Game {
     this.hud.setPhase(phase, { canDeal: hasBets, hasBets, canRebet: lastTotal > 0 && lastTotal <= this.balance, showHint: !this.tutorialDone });
   }
 
-  // The dealer's speaking light follows the voice: word events pulse it, and a length-based
-  // estimate keeps it going when the voice is muted or reports nothing.
-  say(text) {
-    const seconds = 0.3 + text.length * 0.062;
-    this.dealer.talk(seconds);
-    this.audio.speak(text, {
-      onStart: () => this.dealer.talk(seconds),
-      onBoundary: () => this.dealer.syllable(),
-      onEnd: () => this.dealer.stopTalking(),
-    });
+  // The dealer's calls appear as on-screen call-outs; the speaking light pulses with each one.
+  announce(text, sub = '', seconds = 1.8) {
+    this.hud.callout(text, sub, seconds);
+    this.dealer.talk(0.9);
+  }
+
+  // Updates the score badges from the cards on the table; only face-up cards count.
+  refreshHands(states = {}) {
+    for (const side of ['player', 'banker']) {
+      const cards = this.cards[side].filter(Boolean);
+      if (!cards.length) continue;
+      const up = cards.filter((c) => c.faceUp).map((c) => c.card);
+      this.hud.setHand(side, {
+        cards: cards.map((c) => ({ ...c.card, value: cardValue(c.card), faceUp: c.faceUp })),
+        total: handTotal(up),
+        natural: up.length === 2 && cards.length === 2 && isNatural(up),
+        state: states[side] || '',
+      });
+    }
   }
 
   // ---- Chips on the rail --------------------------------------------------
@@ -343,7 +351,7 @@ export class Game {
     await this.rig.moveTo('seat', 3.2, ease.inOut);
     this.state = 'betting';
     this.refreshHud();
-    this.say('Good evening, and welcome to the salon. Please place your bets.');
+    this.announce('Place your bets', 'Good evening, and welcome to the salon', 2.6);
     this.hud.toast('Choose a chip, then click Player, Banker or a side bet', 4);
   }
 
@@ -360,7 +368,7 @@ export class Game {
     this.persist();
     this.refreshHud();
     this.hud.hideBanner();
-    this.say('No more bets.');
+    this.announce('No more bets', '', 1.2);
 
     while (this.dealer.busyGesture) await wait(0.1);
     if (this.shoe.cutReached) await this.newShoe();
@@ -375,21 +383,32 @@ export class Game {
 
     for (const side of ['player', 'banker']) {
       await this.dealerReveal(side, [0, 1]);
-      const cards = coup[side].slice(0, 2);
-      const total = handTotal(cards);
-      this.hud.toast(`${SIDE_NAME[side]} ${total}${isNatural(cards) ? ' — natural' : ''}`);
-      this.say(isNatural(cards) ? `${SIDE_NAME[side]}, natural ${total}.` : `${SIDE_NAME[side]}, ${total}.`);
-      await wait(0.55);
+      await wait(0.35);
     }
 
-    for (const step of coup.steps.slice(4)) {
-      this.say(`${SIDE_NAME[step.side]} draws.`);
-      await this.dealCard(step.side, step.index, coup[step.side][step.index]);
-      await this.dealer.rest('right', 0.3);
-      await this.dealerReveal(step.side, [step.index]);
-      const total = handTotal(coup[step.side]);
-      this.hud.toast(`${SIDE_NAME[step.side]} ${total}`);
-      await wait(0.45);
+    // Call out the drawing rules as they apply, then deal any third cards.
+    const pTotal = handTotal(coup.player.slice(0, 2));
+    const bTotal = handTotal(coup.banker.slice(0, 2));
+    const pNatural = isNatural(coup.player.slice(0, 2));
+    const bNatural = isNatural(coup.banker.slice(0, 2));
+    if (pNatural || bNatural) {
+      if (pNatural && bNatural) this.announce('Naturals', `Player ${pTotal} · Banker ${bTotal} — no more cards`);
+      else this.announce(`Natural ${pNatural ? pTotal : bTotal}`, `${pNatural ? 'Player' : 'Banker'} — no more cards are drawn`);
+      await wait(1.2);
+    } else {
+      const playerDraws = coup.player.length === 3;
+      this.announce(playerDraws ? 'Player draws' : 'Player stands',
+        `Player has ${pTotal} — ${playerDraws ? 'draws on 0 to 5' : 'stands on 6 or 7'}`);
+      await wait(1.1);
+      if (playerDraws) await this.dealThird('player', coup);
+
+      const bankerDraws = coup.banker.length === 3;
+      const why = playerDraws
+        ? `Banker has ${bTotal}, Player's third card counts ${cardValue(coup.player[2])}`
+        : `Banker has ${bTotal} — ${bankerDraws ? 'draws on 0 to 5' : 'stands on 6 or 7'}`;
+      this.announce(bankerDraws ? 'Banker draws' : 'Banker stands', why);
+      await wait(1.1);
+      if (bankerDraws) await this.dealThird('banker', coup);
     }
 
     await this.resolve(coup);
@@ -403,7 +422,14 @@ export class Game {
       this.persist();
     }
     this.refreshHud();
-    this.say('Place your bets.');
+    this.announce('Place your bets', '', 1.4);
+  }
+
+  async dealThird(side, coup) {
+    await this.dealCard(side, 2, coup[side][2]);
+    await this.dealer.rest('right', 0.3);
+    await this.dealerReveal(side, [2]);
+    await wait(0.45);
   }
 
   shoeMouth() {
@@ -437,7 +463,8 @@ export class Game {
       },
     });
     this.dealer.release('right');
-    this.dealer.setGrip('right', 0.1);
+    this.dealer.setGrip('right', 0);
+    this.refreshHands();
   }
 
   async flipCard(c3) {
@@ -451,6 +478,7 @@ export class Game {
       },
     });
     c3.setFaceUp(true);
+    this.refreshHands();
   }
 
   async dealerReveal(side, indices) {
@@ -463,7 +491,7 @@ export class Game {
       await this.dealer.reach(arm, p.clone().add(new THREE.Vector3(0, 0.04, -0.03)), 0.16);
       this.dealer.setGrip(arm, 0.5);
       await this.flipCard(c3);
-      this.dealer.setGrip(arm, 0.1);
+      this.dealer.setGrip(arm, 0);
     }
     await this.dealer.rest(arm, 0.25);
   }
@@ -487,9 +515,9 @@ export class Game {
     const result = settle(this.bets, coup);
     const { winner, playerTotal: p, bankerTotal: b } = coup;
     const title = winner === 'tie' ? 'TIE' : `${SIDE_NAME[winner].toUpperCase()} WINS`;
-    const score = winner === 'banker' ? `Banker ${b} · Player ${p}` : `Player ${p} · Banker ${b}`;
-    this.hud.banner({ title, kind: winner, score, net: result.net });
-    this.say(winner === 'tie' ? `Tie, ${p} all.` : `${SIDE_NAME[winner]} wins, ${Math.max(p, b)} over ${Math.min(p, b)}.`);
+    this.hud.banner({ title, kind: winner, player: p, banker: b, net: result.net });
+    this.refreshHands(winner === 'tie' ? {} : { [winner]: 'won', [winner === 'player' ? 'banker' : 'player']: 'lost' });
+    this.dealer.talk(1.2);
     this.dealer.look(this.camera.position);
     this.dealer.nod();
     await this.presentWinner(winner);
@@ -620,13 +648,14 @@ export class Game {
     this.table.discardStack.scale.y = Math.max(0.0001, h);
     this.table.discardStack.position.y = TABLE_Y + h / 2;
     this.cards = { player: [], banker: [] };
+    this.hud.hideHands();
     this.dealer.rest('left', 0.4);
     this.dealer.look(this.camera.position);
   }
 
   async newShoe() {
     this.hud.toast('The cut card is out. Shuffling a fresh eight-deck shoe…', 3);
-    this.say('The cut card is out. A fresh shoe.');
+    this.announce('New shoe', 'The cut card is out — shuffling eight fresh decks', 2.4);
     this.audio.cardSlide();
     await wait(1.4);
     this.shoe.reset();
@@ -659,6 +688,11 @@ export class Game {
 
   update(dt) {
     const t = performance.now() / 1000;
+    for (const side of ['player', 'banker']) {
+      const [a, b] = CARD_SPOTS[side];
+      const p = new THREE.Vector3((a.x + b.x) / 2, TABLE_Y, a.z + 0.115).project(this.camera);
+      this.hud.placeHand(side, ((p.x + 1) / 2) * window.innerWidth, ((1 - p.y) / 2) * window.innerHeight, p.z < 1);
+    }
     for (const [key, h] of Object.entries(this.table.highlights)) {
       const hoverTarget = this.hoverZone === key ? 1 : 0;
       h.hover += (hoverTarget - h.hover) * Math.min(1, dt * 10);

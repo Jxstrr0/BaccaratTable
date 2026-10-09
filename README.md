@@ -4,6 +4,9 @@ A private, high-limit Punto Banco table in a night-time penthouse overlooking th
 You sit at the table, place your chips, and an android croupier deals from an eight-deck shoe, turns every card,
 pays the winners and sweeps the losers.
 
+Score badges by each hand show every card's point value and the running total, and call-outs explain each
+step of the drawing rules ("Player has 5 — draws on 0 to 5").
+
 Play it at **https://jxstrr0.github.io/BaccaratTable/**.
 
 ## Play
@@ -49,6 +52,6 @@ Bankroll, settings and stats are saved in your browser. `npm test` runs the rule
 | `src/game/game.js` | Round flow: betting, dealing, reveals, settlement, persistence; mouse and touch input |
 | `src/scene/*` | Renderer/post-processing (with adaptive resolution), penthouse, table & felt layout, cards, chips, dealer (two-bone IK), camera |
 | `src/scene/textures.js` | Procedural card faces, backs, chips and felt maps |
-| `src/audio/audio.js` | Procedural Web Audio: card/chip foley, lounge music, room tone, dealer voice |
+| `src/audio/audio.js` | Procedural Web Audio: card/chip foley, lounge music, room tone |
 
 Third-party textures and HDRIs are CC0 — see [CREDITS.md](CREDITS.md).
