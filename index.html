@@ -40,7 +40,6 @@
 
       <div id="settings" class="panel settings hidden">
         <h3>Settings</h3>
-        <label class="toggle"><input type="checkbox" id="opt-voice" checked /> <span>Dealer voice</span></label>
         <label class="toggle"><input type="checkbox" id="opt-sound" checked /> <span>Sound</span></label>
         <label class="slider"><span>Music</span><input type="range" id="opt-music" min="0" max="1" step="0.01" value="0.35" /></label>
         <label class="slider"><span>Effects</span><input type="range" id="opt-sfx" min="0" max="1" step="0.01" value="0.8" /></label>
@@ -55,6 +54,9 @@
         <div class="row small counts"><span id="cnt-p" class="p">P 0</span><span id="cnt-b" class="b">B 0</span><span id="cnt-t" class="t">T 0</span></div>
       </div>
 
+      <div id="score-player" class="score-badge player hidden"><div class="head"><span class="side">Player</span><span class="tag"></span></div><div class="total">–</div><div class="cards"></div></div>
+      <div id="score-banker" class="score-badge banker hidden"><div class="head"><span class="side">Banker</span><span class="tag"></span></div><div class="total">–</div><div class="cards"></div></div>
+      <div id="callout" class="callout"></div>
       <div id="banner" class="banner"></div>
       <div id="toast" class="toast"></div>
 

@@ -135,7 +135,7 @@ function paintJacket() {
 
 // One finger segment: a porcelain capsule with a dark joint at its base, merged into a single
 // vertex-coloured mesh so a whole hand costs only a handful of draw calls.
-function phalanxGeometry(length, radius) {
+function phalanxGeometry(length, radius, tipRadius = radius) {
   const tint = (geo, hex) => {
     const c = new THREE.Color(hex);
     const n = geo.attributes.position.count;
@@ -144,10 +144,18 @@ function phalanxGeometry(length, radius) {
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     return geo;
   };
-  const bone = new THREE.CapsuleGeometry(radius, length, 4, 10);
-  bone.translate(0, length / 2 + radius * 0.6, 0);
-  const knuckle = new THREE.SphereGeometry(radius * 1.04, 10, 8);
-  return mergeGeometries([tint(bone, 0xffffff), tint(knuckle, 0x2b2b30)]);
+  const bone = new THREE.CapsuleGeometry(radius, length, 4, 12);
+  // Taper toward the tip.
+  const pos = bone.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const k = THREE.MathUtils.clamp((pos.getY(i) + length / 2) / length, 0, 1);
+    const scale = 1 + (tipRadius / radius - 1) * k;
+    pos.setXYZ(i, pos.getX(i) * scale, pos.getY(i), pos.getZ(i) * scale * 0.9);
+  }
+  bone.computeVertexNormals();
+  bone.translate(0, length / 2 + radius * 0.55, 0);
+  const knuckle = new THREE.SphereGeometry(radius * 0.98, 12, 8);
+  return mergeGeometries([tint(bone, 0xffffff), tint(knuckle, 0x8d877f)]);
 }
 
 // An android croupier: sculpted porcelain head with a dark visor and light-bar eyes, a tailored
@@ -339,12 +347,12 @@ export class Dealer {
       for (const m of [upper, fore, elbow, cuff]) m.castShadow = true;
       const hand = this.buildHand(s, fingerMat);
       this.root.add(upper, fore, elbow, cuff, link, wrist, hand.group);
-      // At rest the hands sit together on the table edge.
-      const rest = new THREE.Vector3(0.07 * s, 0.81, 0.35);
+      // At rest the hands lie on the table edge, a little apart.
+      const rest = new THREE.Vector3(0.13 * s, 0.79, 0.385);
       this.arms[side] = {
         side, s, shoulderAnchor, upper, fore, elbow, cuff, link, wrist, hand,
         target: rest.clone(), rest, follow: null, followOffset: new THREE.Vector3(),
-        grip: 0.15, gripTarget: 0.15, roll: 0, rollTarget: 0,
+        grip: 0, gripTarget: 0, roll: 0, rollTarget: 0,
       };
     }
 
@@ -355,65 +363,78 @@ export class Dealer {
     this.tmp = { a: new THREE.Vector3(), b: new THREE.Vector3(), c: new THREE.Vector3(), m: new THREE.Matrix4() };
   }
 
-  // Hand: fingers extend along +Y and the palm faces -Z. Each finger has three posable segments.
+  // Hand: fingers extend along +Y and the palm faces -Z. In the hand's frame the thumb sits on the
+  // +x side for s = +1 and the -x side for s = -1, which puts it toward the body's midline.
   buildHand(s, fingerMat) {
     const group = new THREE.Group();
-    const palm = new THREE.Mesh(new RoundedBoxGeometry(0.074, 0.082, 0.026, 3, 0.011), this.porcelain);
-    palm.position.y = 0.045;
+    const palm = new THREE.Mesh(new RoundedBoxGeometry(0.068, 0.076, 0.021, 4, 0.0095), this.porcelain);
+    palm.position.y = 0.04;
     palm.castShadow = true;
     group.add(palm);
+    // A raised knuckle ridge across the back of the hand softens the box silhouette.
+    const ridge = new THREE.Mesh(new THREE.CapsuleGeometry(0.008, 0.05, 4, 10), this.porcelain);
+    ridge.rotation.z = Math.PI / 2;
+    ridge.position.set(0, 0.074, 0.002);
+    group.add(ridge);
     const fingers = [];
+    // Index, middle, ring, little: x offset toward the thumb side, segment lengths, base/tip radius.
     const specs = [
-      { x: -0.026, lens: [0.026, 0.018, 0.014], r: 0.0082 },
-      { x: -0.009, lens: [0.029, 0.02, 0.015], r: 0.0085 },
-      { x: 0.009, lens: [0.027, 0.019, 0.014], r: 0.0082 },
-      { x: 0.025, lens: [0.021, 0.015, 0.012], r: 0.0075 },
+      { x: 0.0235, lens: [0.03, 0.021, 0.017], r: 0.0076, relax: 0.12 },
+      { x: 0.008, lens: [0.033, 0.023, 0.018], r: 0.0078, relax: 0.17 },
+      { x: -0.0075, lens: [0.031, 0.021, 0.017], r: 0.0074, relax: 0.22 },
+      { x: -0.0225, lens: [0.024, 0.017, 0.014], r: 0.0066, relax: 0.29 },
     ];
     for (const [i, spec] of specs.entries()) {
       const base = new THREE.Group();
-      base.position.set(spec.x * s, 0.088, -0.002);
+      base.position.set(spec.x * s, 0.078 - Math.abs(i - 1.2) * 0.003, -0.001);
       group.add(base);
       let parent = base;
       const segs = [];
-      for (const len of spec.lens) {
-        const seg = new THREE.Mesh(phalanxGeometry(len, spec.r), fingerMat);
+      spec.lens.forEach((len, j) => {
+        const r0 = spec.r * (1 - j * 0.08);
+        const seg = new THREE.Mesh(phalanxGeometry(len, r0, r0 * 0.9), fingerMat);
         parent.add(seg);
         segs.push(seg);
         const next = new THREE.Group();
-        next.position.y = len + spec.r * 1.2;
+        next.position.y = len + r0 * 1.1;
         seg.add(next);
         parent = next;
-      }
-      fingers.push({ base, segs, spread: (i - 1.5) * s });
+      });
+      fingers.push({ base, segs, fan: (1.5 - i) * s, relax: spec.relax, pinch: [1, 0.8, 0.55, 0.45][i] });
     }
-    // Thumb: two segments set into the side of the palm, angled across it.
+    // Thumb: two segments rooted low on the inner edge of the palm, angled forward and under.
     const thumbBase = new THREE.Group();
-    thumbBase.position.set(-0.04 * s, 0.03, -0.01);
+    thumbBase.position.set(0.033 * s, 0.018, -0.006);
     group.add(thumbBase);
-    const t1 = new THREE.Mesh(phalanxGeometry(0.026, 0.0095), fingerMat);
+    const t1 = new THREE.Mesh(phalanxGeometry(0.027, 0.0088, 0.0082), fingerMat);
     thumbBase.add(t1);
     const tj = new THREE.Group();
-    tj.position.y = 0.037;
+    tj.position.y = 0.027 + 0.0095;
     t1.add(tj);
-    const t2 = new THREE.Mesh(phalanxGeometry(0.02, 0.009), fingerMat);
+    const t2 = new THREE.Mesh(phalanxGeometry(0.02, 0.0082, 0.0072), fingerMat);
     tj.add(t2);
     return { group, fingers, thumb: { base: thumbBase, t1, t2, s } };
   }
 
-  // grip: 0 = flat, ~0.5 = pinching a card, 1 = closed. open: 0..1 splays the fingers.
+  // grip: 0 = relaxed, ~0.5 = pinching a card between thumb and index, 1 = closed.
+  // open: 0..1 fans the fingers apart (paying chips, presenting).
   poseHand(hand, grip, open) {
     for (const f of hand.fingers) {
-      f.base.rotation.z = f.spread * 0.07 * open;
+      // Fingers fan out from the middle; relaxed fingers curl a little more toward the little finger.
+      f.base.rotation.z = -f.fan * 0.05 * open;
+      const curl = f.relax * (1 - open) + grip * f.pinch;
       const [a, b, c] = f.segs;
-      a.rotation.x = -grip * 1.05;
-      b.rotation.x = -grip * 1.35;
-      c.rotation.x = -grip * 0.9;
+      a.rotation.x = -curl * 0.9;
+      b.rotation.x = -curl * 1.25;
+      c.rotation.x = -curl * 0.8;
     }
     const t = hand.thumb;
-    t.base.rotation.x = -0.35 - grip * 0.6;
-    t.base.rotation.z = (0.75 - grip * 0.35 + open * 0.2) * t.s;
-    t.t1.rotation.x = -grip * 0.4;
-    t.t2.rotation.x = -grip * 0.7;
+    // Rest: alongside the index finger and slightly under the palm. Pinch: swings in to meet it.
+    t.base.rotation.x = -0.55 - grip * 0.35;
+    t.base.rotation.z = -(0.55 - grip * 0.3 + open * 0.25) * t.s;
+    t.base.rotation.y = -0.4 * t.s;
+    t.t1.rotation.x = -0.15 - grip * 0.35;
+    t.t2.rotation.x = -0.2 - grip * 0.5;
   }
 
   // ---- Animation API (world-space targets) --------------------------------
@@ -445,7 +466,7 @@ export class Dealer {
   async rest(side, duration = 0.5) {
     const arm = this.arms[side];
     arm.follow = null;
-    arm.gripTarget = 0.15;
+    arm.gripTarget = 0;
     arm.rollTarget = 0;
     const from = arm.target.clone();
     await tween({ duration, update: (k) => arm.target.lerpVectors(from, arm.rest, k) });
@@ -478,17 +499,9 @@ export class Dealer {
     this.nodAmt = 0;
   }
 
-  // Lights the speaking bar; `seconds` is a fallback for voices that report no end event.
+  // Pulses the speaking light for a moment, e.g. while a call-out is on screen.
   talk(seconds) {
     this.talkUntil = this.time + seconds;
-  }
-
-  syllable() {
-    this.talkLevel = 1;
-  }
-
-  stopTalking() {
-    this.talkUntil = Math.min(this.talkUntil, this.time + 0.15);
   }
 
   // Open palm toward a point (the winning hand), held briefly.
@@ -527,7 +540,7 @@ export class Dealer {
       this.glance = this.root.localToWorld(cuffAt.clone());
       await tween({ duration: 0.7, easing: ease.sine, update: (k) => { right.target.x = pinch.x + Math.sin(k * Math.PI * 2) * 0.012; } });
       this.glance = null;
-      right.gripTarget = 0.15;
+      right.gripTarget = 0;
       // Hands go home unless the game has already sent them somewhere else.
       if (this.idle) await this.restBoth(0.5);
     }
@@ -585,7 +598,7 @@ export class Dealer {
     const open = 1 - Math.sin(this.blink * Math.PI);
     for (const e of this.eyes) e.scale.set(Math.max(0.15, open), 1, 1);
 
-    // Speaking light pulses per syllable: from voice word events, or simulated when there are none.
+    // Speaking light pulses in syllable-like bursts while the dealer is making a call.
     const talking = t < this.talkUntil;
     if (talking && t > this.nextSyllable) {
       this.talkLevel = Math.max(this.talkLevel, 0.55 + Math.random() * 0.45);
@@ -640,10 +653,14 @@ export class Dealer {
     arm.grip += (arm.gripTarget - arm.grip) * Math.min(1, dt * 10);
     arm.roll += (arm.rollTarget - arm.roll) * Math.min(1, dt * 7);
 
-    // Hand frame: fingers continue the forearm but flatten toward the table; roll turns the palm up.
-    const yAxis = foreDir.clone();
-    yAxis.y = yAxis.y * 0.25 - 0.18;
-    yAxis.normalize();
+    // Hand frame: fingers follow the forearm's horizontal heading (blended toward straight across the
+    // table when resting), tilted down a little more the further the hand reaches; roll turns the palm up.
+    const reachOut = THREE.MathUtils.clamp((arm.target.z - arm.rest.z) / 0.25, 0, 1);
+    const heading = new THREE.Vector3(foreDir.x, 0, foreDir.z);
+    if (heading.lengthSq() < 1e-4) heading.set(0, 0, 1);
+    heading.normalize().lerp(new THREE.Vector3(-arm.s * 0.25, 0, 1).normalize(), 0.6 * (1 - reachOut)).normalize();
+    const tilt = -0.08 - reachOut * 0.3;
+    const yAxis = heading.multiplyScalar(Math.cos(tilt)).add(new THREE.Vector3(0, Math.sin(tilt), 0)).normalize();
     const up = new THREE.Vector3(0, 1, 0).addScaledVector(yAxis, -yAxis.y).normalize();
     const across = new THREE.Vector3().crossVectors(yAxis, up).normalize();
     const angle = arm.roll * Math.PI * -arm.s;

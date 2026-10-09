@@ -31,7 +31,7 @@ export class Hud {
     on('btn-help-close', () => $('help').classList.add('hidden'));
     on('btn-reset', () => handlers.resetBankroll());
 
-    for (const id of ['opt-voice', 'opt-sound', 'opt-fast']) {
+    for (const id of ['opt-sound', 'opt-fast']) {
       $(id).addEventListener('change', () => handlers.setting(id.slice(4), $(id).checked));
     }
     for (const id of ['opt-music', 'opt-sfx']) {
@@ -49,7 +49,6 @@ export class Hud {
   }
 
   applySettings(s) {
-    $('opt-voice').checked = s.voice;
     $('opt-sound').checked = s.sound;
     $('opt-fast').checked = s.fast;
     $('opt-music').value = s.music;
@@ -83,17 +82,23 @@ export class Hud {
     $('hint').style.opacity = betting && showHint ? 1 : 0;
   }
 
-  banner({ title, kind, score, net }) {
+  // Result banner: who won, both totals side by side, and what it meant for the player.
+  banner({ title, kind, player, banker, net }) {
     const el = $('banner');
     el.innerHTML = '';
     const t = document.createElement('div');
     t.className = `title ${kind || ''}`;
     t.textContent = title;
     el.appendChild(t);
-    if (score) {
+    if (player != null) {
       const s = document.createElement('div');
-      s.className = 'score';
-      s.textContent = score;
+      s.className = 'totals';
+      for (const [side, total] of [['player', player], ['banker', banker]]) {
+        const col = document.createElement('div');
+        col.className = `total ${side}${kind === side ? ' won' : ''}`;
+        col.innerHTML = `<span class="label">${side === 'player' ? 'Player' : 'Banker'}</span><span class="num">${total}</span>`;
+        s.appendChild(col);
+      }
       el.appendChild(s);
     }
     if (net != null) {
@@ -107,6 +112,64 @@ export class Hud {
 
   hideBanner() {
     $('banner').classList.remove('show');
+  }
+
+  // A large, short-lived call-out for each step of the coup ("Player draws").
+  callout(text, sub = '', seconds = 1.8) {
+    const el = $('callout');
+    el.innerHTML = '';
+    const main = document.createElement('div');
+    main.className = 'main';
+    main.textContent = text;
+    el.appendChild(main);
+    if (sub) {
+      const s = document.createElement('div');
+      s.className = 'sub';
+      s.textContent = sub;
+      el.appendChild(s);
+    }
+    el.classList.remove('show');
+    void el.offsetWidth; // restart the entrance animation
+    el.classList.add('show');
+    clearTimeout(this.calloutTimer);
+    this.calloutTimer = setTimeout(() => el.classList.remove('show'), seconds * 1000);
+  }
+
+  // Score badge beside each hand: every card with its point value, and the running total.
+  // cards: [{ rank, suit, value, faceUp }]; state: '' | 'won' | 'lost'.
+  setHand(side, { cards, total, natural = false, state = '' }) {
+    const el = $(`score-${side}`);
+    el.classList.remove('hidden');
+    el.classList.toggle('won', state === 'won');
+    el.classList.toggle('lost', state === 'lost');
+    const suits = { S: '♠', H: '♥', D: '♦', C: '♣' };
+    const row = el.querySelector('.cards');
+    row.innerHTML = '';
+    let shown = 0;
+    for (const c of cards) {
+      const m = document.createElement('span');
+      if (c.faceUp) {
+        shown++;
+        m.className = `mini${c.suit === 'H' || c.suit === 'D' ? ' red' : ''}`;
+        m.innerHTML = `<b>${c.rank}${suits[c.suit]}</b><i>${c.value}</i>`;
+      } else {
+        m.className = 'mini back';
+      }
+      row.appendChild(m);
+    }
+    el.querySelector('.total').textContent = shown ? total : '–';
+    el.querySelector('.tag').textContent = natural ? 'Natural' : '';
+  }
+
+  hideHands() {
+    for (const side of ['player', 'banker']) $(`score-${side}`).classList.add('hidden');
+  }
+
+  // Pins a score badge to a screen position (px), centred horizontally.
+  placeHand(side, x, y, visible) {
+    const el = $(`score-${side}`);
+    el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px) translate(-50%, 0)`;
+    el.style.visibility = visible ? 'visible' : 'hidden';
   }
 
   toast(text, seconds = 2.4) {
