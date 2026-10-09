@@ -370,7 +370,7 @@ export class Game {
       const total = handTotal(cards);
       this.hud.toast(`${SIDE_NAME[side]} ${total}${isNatural(cards) ? ' — natural' : ''}`);
       this.say(isNatural(cards) ? `${SIDE_NAME[side]}, natural ${total}.` : `${SIDE_NAME[side]}, ${total}.`);
-      await wait(0.9);
+      await wait(0.55);
     }
 
     for (const step of coup.steps.slice(4)) {
@@ -380,7 +380,7 @@ export class Game {
       await this.dealerReveal(step.side, [step.index]);
       const total = handTotal(coup[step.side]);
       this.hud.toast(`${SIDE_NAME[step.side]} ${total}`);
-      await wait(0.7);
+      await wait(0.45);
     }
 
     await this.resolve(coup);
@@ -431,11 +431,11 @@ export class Game {
   async flipCard(c3) {
     this.audio.cardFlip();
     await tween({
-      duration: 0.45,
+      duration: 0.26,
       easing: ease.inOut,
       update: (k) => {
         c3.pivot.rotation.z = Math.PI * k;
-        c3.pivot.position.y = Math.sin(k * Math.PI) * 0.055;
+        c3.pivot.position.y = Math.sin(k * Math.PI) * 0.045;
       },
     });
     c3.setFaceUp(true);
@@ -447,10 +447,10 @@ export class Game {
       const c3 = this.cards[side][i];
       const p = c3.root.position.clone();
       this.dealer.look(p);
-      await this.dealer.reach(arm, p.clone().add(new THREE.Vector3(0, 0.04, -0.03)), 0.3);
+      await this.dealer.reach(arm, p.clone().add(new THREE.Vector3(0, 0.04, -0.03)), 0.16);
       await this.flipCard(c3);
     }
-    await this.dealer.rest(arm, 0.35);
+    await this.dealer.rest(arm, 0.25);
   }
 
   async resolve(coup) {
