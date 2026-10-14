@@ -60,6 +60,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .loader-card { text-align: center; padding: 24px; }
 .brand { font-family: var(--serif); font-size: clamp(44px, 9vw, 84px); letter-spacing: 0.32em; color: var(--gold-hi); margin-right: -0.32em; }
+.studio { font-size: 11px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--muted); margin: 0 -0.42em 14px 0; }
+.studio-credit { text-align: center; letter-spacing: 0.08em; }
 .brand-sub { font-size: 12px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
 .progress { width: min(320px, 70vw); height: 2px; background: rgba(255, 255, 255, 0.1); margin: 42px auto 12px; overflow: hidden; }
 #progress-bar { height: 100%; width: 0; background: var(--gold); transition: width 0.2s; }

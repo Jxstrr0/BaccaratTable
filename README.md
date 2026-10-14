@@ -1,5 +1,7 @@
 # Penthouse Baccarat
 
+*A Longlight Interactive game.*
+
 A private, high-limit Punto Banco table in a night-time penthouse overlooking the Shanghai skyline — in the browser, in 3D.
 You sit at the table, place your chips, and an android croupier deals from an eight-deck shoe, turns every card,
 pays the winners and sweeps the losers.
