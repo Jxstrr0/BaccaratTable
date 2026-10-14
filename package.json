@@ -2,6 +2,7 @@
   "name": "baccarat-table",
   "private": true,
   "version": "1.0.0",
+  "author": "Longlight Interactive",
   "type": "module",
   "scripts": {
     "dev": "vite",
