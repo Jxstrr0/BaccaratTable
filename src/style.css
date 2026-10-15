@@ -80,7 +80,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .top-left { position: absolute; top: 16px; left: 16px; padding: 14px 18px; min-width: 210px; }
 .balance { font-family: var(--serif); font-size: 34px; font-weight: 600; color: var(--gold-hi); line-height: 1.1; margin: 2px 0 6px; font-variant-numeric: lining-nums tabular-nums; }
 .top-right { position: absolute; top: 16px; right: 16px; display: flex; gap: 8px; }
-.settings { position: absolute; top: 66px; right: 16px; padding: 16px 18px; width: 250px; }
+.settings { position: absolute; top: 66px; right: 16px; padding: 16px 18px; width: 250px; max-height: calc(100vh - 82px); max-height: calc(100dvh - 82px); overflow-y: auto; }
 .settings h3 { margin: 0 0 10px; font-family: var(--serif); font-weight: 600; font-size: 20px; color: var(--gold-hi); letter-spacing: 0.06em; }
 .toggle, .slider { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 6px 0; }
 .slider { justify-content: space-between; }
@@ -186,6 +186,26 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold-hi); o
 }
 .toast.show { opacity: 1; }
 
+/* Save codes: the Back up / Restore buttons in Settings and their window. */
+.save-codes { margin: 0 0 12px; }
+.save-note { font-size: 12px; color: var(--muted); margin: 4px 0 8px; line-height: 1.4; }
+.save-row { display: flex; gap: 8px; }
+.save-row .ghost-btn { flex: 1; }
+.help.code-panel { max-width: 520px; }
+#code-text {
+  display: block; width: 100%; min-height: 120px; resize: vertical; margin: 12px 0 8px; padding: 10px 12px;
+  border-radius: 10px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.35); color: var(--ink);
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all;
+}
+#code-text:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+#code-text[readonly] { color: var(--gold-hi); }
+.code-msg { min-height: 1.5em; font-size: 13px; line-height: 1.5; margin: 0 0 14px; color: var(--muted); }
+.code-msg.good { color: #b8f5c9; }
+.code-msg.bad { color: #ff9c9c; }
+.code-msg.ask { color: var(--ink); }
+.code-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; }
+.code-actions button, .save-row button { min-height: 44px; -webkit-tap-highlight-color: transparent; }
+
 .help { max-width: 640px; width: calc(100vw - 32px); padding: 26px 30px; max-height: 88vh; overflow: auto; font-size: 14px; line-height: 1.6; }
 .help h2 { font-family: var(--serif); font-size: 32px; color: var(--gold-hi); margin: 0 0 8px; letter-spacing: 0.08em; }
 .help table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 13px; }
@@ -206,4 +226,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--gold-hi); o
   .hint-line { display: none; }
   .gold-btn { padding: 10px 22px; font-size: 16px; }
   .ghost-btn { padding: 8px 11px; font-size: 11px; }
+  .help.code-panel { padding: 20px 18px; }
+  #code-text { font-size: 16px; } /* 16px stops phones zooming in when the box is tapped */
 }

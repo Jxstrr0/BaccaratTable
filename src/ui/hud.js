@@ -1,5 +1,6 @@
 import { DENOMS } from '../scene/chips.js';
 import { makeChipTextures } from '../scene/textures.js';
+import { SaveCodeDialog } from './savecode-dialog.js';
 
 const $ = (id) => document.getElementById(id);
 export const money = (n) => `${n < 0 ? '−' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
@@ -32,18 +33,21 @@ export class Hud {
     on('btn-help-close', () => this.toggleHelp(false));
     // Settings close when you click back onto the table; the help card closes on its backdrop.
     document.addEventListener('pointerdown', (e) => {
-      if (!e.target.closest('#settings, #btn-settings')) this.toggleSettings(false);
+      // The save code window opens from Settings, so taps in it keep Settings open.
+      if (!e.target.closest('#settings, #btn-settings, #save-code')) this.toggleSettings(false);
     });
     $('help').addEventListener('click', (e) => {
       if (e.target === $('help')) this.toggleHelp(false);
     });
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
+      // The save code window handles its own Escape (one step back), so leave Settings open.
+      if (e.key === 'Escape' && !e.defaultPrevented && !this.dialogOpen) {
         this.toggleHelp(false);
         this.toggleSettings(false);
       }
     });
     on('btn-reset', () => handlers.resetBankroll());
+    this.saveCodes = new SaveCodeDialog(handlers, (text, seconds) => this.toast(text, seconds));
 
     for (const id of ['opt-sound', 'opt-fast']) {
       $(id).addEventListener('change', () => handlers.setting(id.slice(4), $(id).checked));
@@ -51,6 +55,11 @@ export class Hud {
     for (const id of ['opt-music', 'opt-sfx']) {
       $(id).addEventListener('input', () => handlers.setting(id.slice(4), parseFloat($(id).value)));
     }
+  }
+
+  // True while the Back up / Restore window is open (table shortcuts pause).
+  get dialogOpen() {
+    return this.saveCodes.isOpen;
   }
 
   get helpOpen() {

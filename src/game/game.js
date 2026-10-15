@@ -7,9 +7,11 @@ import {
 } from '../scene/layout.js';
 import { tween, wait, ease, setTimeScale } from '../util/tween.js';
 import { money } from '../ui/hud.js';
+import { makeCode } from './savecode.js';
 
 const STORE = 'penthouse-baccarat-v1';
 const START_BANKROLL = 100000;
+const DEFAULT_SETTINGS = { sound: true, music: 0.35, sfx: 0.8, fast: false };
 const LIMITS = { player: 100000, banker: 100000, tie: 10000, playerPair: 10000, bankerPair: 10000 };
 const SIDE_NAME = { player: 'Player', banker: 'Banker' };
 const ZONE_BY_KEY = Object.fromEntries(ZONES.map((z) => [z.key, z]));
@@ -33,7 +35,7 @@ export class Game {
 
     const saved = loadState();
     this.balance = Number.isFinite(saved.balance) ? saved.balance : START_BANKROLL;
-    this.settings = { sound: true, music: 0.35, sfx: 0.8, fast: false, ...saved.settings };
+    this.settings = { ...DEFAULT_SETTINGS, ...saved.settings };
     this.stats = { hands: 0, biggestWin: 0, ...saved.stats, sessionNet: 0 };
     // Keep only bets that still exist on the layout (older saves may hold retired side bets).
     this.lastBets = saved.lastBets
@@ -84,15 +86,50 @@ export class Game {
 
   // ---- Persistence & settings ---------------------------------------------
 
+  // Everything kept between visits. persist() writes it to localStorage, and save codes
+  // (savecode.js) carry the same thing to another phone or browser.
+  saveData() {
+    return {
+      balance: this.balance, settings: this.settings, lastBets: this.lastBets, tutorialDone: this.tutorialDone,
+      stats: { hands: this.stats.hands, biggestWin: this.stats.biggestWin },
+    };
+  }
+
   persist() {
     try {
-      localStorage.setItem(STORE, JSON.stringify({
-        balance: this.balance, settings: this.settings, lastBets: this.lastBets, tutorialDone: this.tutorialDone,
-        stats: { hands: this.stats.hands, biggestWin: this.stats.biggestWin },
-      }));
+      localStorage.setItem(STORE, JSON.stringify(this.saveData()));
     } catch {
       /* storage unavailable: play on without saving */
     }
+  }
+
+  // Bankroll including any chips sitting on the felt (they still belong to the player).
+  get bankroll() {
+    return this.balance + this.onTable;
+  }
+
+  // The save as a code for Settings > Back up.
+  backupCode() {
+    return makeCode({ ...this.saveData(), balance: this.bankroll });
+  }
+
+  // Settings > Restore: applies a save that readCode() has already checked, all at once.
+  // Returns a message if it can't right now, or null when it's done.
+  restoreSave(save) {
+    if (this.state === 'dealing') return 'Finish the current hand first, then try again.';
+    this.clear(); // chips on the felt go back first; the restored bankroll then replaces them
+    this.balance = save.balance;
+    this.settings = { ...DEFAULT_SETTINGS, ...save.settings };
+    this.stats = { hands: 0, biggestWin: 0, ...save.stats, sessionNet: 0 };
+    this.lastBets = save.lastBets;
+    this.tutorialDone = save.tutorialDone;
+    this.rebuildPlayerStacks();
+    this.applySettings();
+    this.hud.setStats(this.stats);
+    this.hud.setLastNet(null);
+    this.persist();
+    this.refreshHud();
+    return null;
   }
 
   applySettings() {
@@ -334,7 +371,9 @@ export class Game {
   }
 
   onKey(e) {
-    if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
+    // Typing in a box (like the save code box) or using the save code window isn't a table shortcut.
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || this.hud.dialogOpen) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
     if (k === 'h' || k === '?') return this.hud.toggleHelp();
     if (k === 'm') {

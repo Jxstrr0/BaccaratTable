@@ -61,6 +61,9 @@ async function boot() {
     double: () => game.double(),
     resetBankroll: () => game.resetBankroll(),
     setting: (k, v) => game.setting(k, v),
+    backupCode: () => game.backupCode(),
+    restoreSave: (save) => game.restoreSave(save),
+    bankroll: () => game.bankroll,
   });
 
   const envReady = stage.loadEnvironment(`${import.meta.env.BASE_URL}assets/env/warm_bar_1k.hdr`);

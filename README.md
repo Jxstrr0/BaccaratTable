@@ -45,7 +45,26 @@ Standard Punto Banco with the full third-card tableau, burn on a new shoe and a 
 | Tie | 8 : 1 (Player/Banker bets push) |
 | Player Pair / Banker Pair | 11 : 1 |
 
-Bankroll, settings and stats are saved in your browser. `npm test` runs the rules engine tests.
+Bankroll, settings and stats are saved in your browser. `npm test` runs the rules engine and save code tests.
+
+## Save codes (move your progress to another device)
+
+Your progress only lives in the browser you play in. A save code lets you take it somewhere else,
+like from your phone to a laptop, or into a new browser.
+
+1. Open **Settings** (the ⚙ button, top right) and tap **Back up**.
+2. Tap **Copy code** and paste it somewhere safe, like your notes app or a message to yourself.
+3. On the other device, open **Settings**, tap **Restore**, paste the code and tap **Restore**.
+   The game shows what's in the code and asks first. Tap **Yes, restore** to swap it in.
+
+A code holds your bankroll (chips on the felt count too), your hands played and biggest win,
+your settings and your last bet for Rebet. It looks like `BT1:eyJiYWxh...` and is about 250 characters.
+If a code is cut short, changed, or from another game, the game says so and changes nothing.
+Codes are made and read right in your browser: nothing is sent anywhere.
+
+How it works: `src/game/savecode.js` turns the save into `BT1:` + the save as base64url text +
+a 6-character checksum, and checks every value before a restore. The window itself is
+`src/ui/savecode-dialog.js` (HTML in `index.html`, the `#save-code` block).
 
 ## Code map
 
@@ -53,6 +72,8 @@ Bankroll, settings and stats are saved in your browser. `npm test` runs the rule
 | --- | --- |
 | `src/game/baccarat.js` | Pure rules: shoe, totals, tableau, settlement (unit tested) |
 | `src/game/game.js` | Round flow: betting, dealing, reveals, settlement, persistence; mouse and touch input |
+| `src/game/savecode.js` | Save codes: make, read and check `BT1:` codes (unit tested) |
+| `src/ui/savecode-dialog.js` | The Back up / Restore window opened from Settings |
 | `src/scene/*` | Renderer/post-processing (with adaptive resolution), penthouse, table & felt layout, cards, chips, dealer (two-bone IK), camera |
 | `src/scene/textures.js` | Procedural card faces, backs, chips and felt maps |
 | `src/audio/audio.js` | Procedural Web Audio: card/chip foley, lounge music, room tone |
