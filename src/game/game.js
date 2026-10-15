@@ -67,6 +67,7 @@ export class Game {
     this.ray = new THREE.Raycaster();
     this.ndc = new THREE.Vector2();
     this.hoverZone = null;
+    this.scratch = new THREE.Vector3();
 
     this.dom.addEventListener('pointermove', (e) => this.onPointerMove(e));
     this.dom.addEventListener('pointerdown', (e) => this.onPointerDown(e));
@@ -333,9 +334,15 @@ export class Game {
   }
 
   onKey(e) {
-    if (e.target instanceof HTMLInputElement) return;
+    if (e.target instanceof HTMLInputElement || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
-    if (this.state !== 'betting') return;
+    if (k === 'h' || k === '?') return this.hud.toggleHelp();
+    if (k === 'm') {
+      this.setting('sound', !this.settings.sound);
+      this.hud.toast(this.settings.sound ? 'Sound on' : 'Sound off', 1.2);
+      return;
+    }
+    if (this.state !== 'betting' || this.hud.helpOpen) return;
     if (k >= '1' && k <= '5') this.selectChip(DENOMS[Number(k) - 1]);
     else if (k === ' ' || k === 'enter') { e.preventDefault(); this.deal(); }
     else if (k === 'c') this.clear();
@@ -690,7 +697,7 @@ export class Game {
     const t = performance.now() / 1000;
     for (const side of ['player', 'banker']) {
       const [a, b] = CARD_SPOTS[side];
-      const p = new THREE.Vector3((a.x + b.x) / 2, TABLE_Y, a.z + 0.115).project(this.camera);
+      const p = this.scratch.set((a.x + b.x) / 2, TABLE_Y, a.z + 0.115).project(this.camera);
       this.hud.placeHand(side, ((p.x + 1) / 2) * window.innerWidth, ((1 - p.y) / 2) * window.innerHeight, p.z < 1);
     }
     for (const [key, h] of Object.entries(this.table.highlights)) {

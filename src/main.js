@@ -12,7 +12,18 @@ import { tickTweens, setTimeScale } from './util/tween.js';
 
 const $ = (id) => document.getElementById(id);
 
+function hasWebGL2() {
+  try {
+    return !!document.createElement('canvas').getContext('webgl2');
+  } catch {
+    return false;
+  }
+}
+
 async function boot() {
+  if (!hasWebGL2()) {
+    throw new Error('this browser has WebGL 2 turned off or unavailable. Try enabling hardware acceleration, or open the table in a current Chrome, Edge, Firefox or Safari.');
+  }
   const manager = new THREE.LoadingManager();
   manager.onProgress = (_url, loaded, total) => {
     $('progress-bar').style.width = `${Math.round((loaded / total) * 100)}%`;
@@ -38,6 +49,7 @@ async function boot() {
 
   const rig = new SeatCamera(stage.camera, stage.renderer.domElement);
   const audio = new AudioEngine();
+  document.addEventListener('visibilitychange', () => audio.setBackgrounded(document.hidden));
 
   let game;
   const hud = new Hud({
