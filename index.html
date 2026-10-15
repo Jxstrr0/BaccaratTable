@@ -47,6 +47,14 @@
         <label class="slider"><span>Effects</span><input type="range" id="opt-sfx" min="0" max="1" step="0.01" value="0.8" /></label>
         <label class="toggle"><input type="checkbox" id="opt-fast" /> <span>Fast dealing</span></label>
         <div class="stats" id="stats"></div>
+        <div class="save-codes">
+          <div class="label">Save code</div>
+          <p class="save-note">Take your progress to another phone or browser.</p>
+          <div class="save-row">
+            <button class="ghost-btn" id="btn-backup">Back up</button>
+            <button class="ghost-btn" id="btn-restore">Restore</button>
+          </div>
+        </div>
         <button class="ghost-btn" id="btn-reset">Reset bankroll</button>
       </div>
 
@@ -91,6 +99,20 @@
         <p class="fine">Keys: <b>1–5</b> chips · <b>Space</b> deal · <b>R</b> rebet · <b>D</b> double · <b>C</b> clear · <b>Backspace</b> undo</p>
         <p class="fine studio-credit">Penthouse Baccarat · © 2026 Longlight Interactive</p>
         <button class="gold-btn" id="btn-help-close">Back to the table</button>
+      </div>
+    </div>
+
+    <!-- Settings > Back up / Restore. Filled in by src/ui/savecode-dialog.js. -->
+    <div id="save-code" class="overlay hidden">
+      <div class="panel help code-panel" role="dialog" aria-modal="true" aria-labelledby="code-title" aria-describedby="code-intro">
+        <h2 id="code-title">Back up</h2>
+        <p id="code-intro"></p>
+        <textarea id="code-text" rows="5" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" aria-label="Save code"></textarea>
+        <p id="code-msg" class="code-msg" role="status" aria-live="polite"></p>
+        <div class="code-actions">
+          <button class="ghost-btn" id="code-cancel">Cancel</button>
+          <button class="gold-btn" id="code-go">Copy code</button>
+        </div>
       </div>
     </div>
 

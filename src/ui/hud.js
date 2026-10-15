@@ -1,5 +1,6 @@
 import { DENOMS } from '../scene/chips.js';
 import { makeChipTextures } from '../scene/textures.js';
+import { SaveCodeDialog } from './savecode-dialog.js';
 
 const $ = (id) => document.getElementById(id);
 export const money = (n) => `${n < 0 ? '−' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
@@ -30,6 +31,7 @@ export class Hud {
     on('btn-help', () => $('help').classList.remove('hidden'));
     on('btn-help-close', () => $('help').classList.add('hidden'));
     on('btn-reset', () => handlers.resetBankroll());
+    this.saveCodes = new SaveCodeDialog(handlers, (text, seconds) => this.toast(text, seconds));
 
     for (const id of ['opt-sound', 'opt-fast']) {
       $(id).addEventListener('change', () => handlers.setting(id.slice(4), $(id).checked));
@@ -37,6 +39,11 @@ export class Hud {
     for (const id of ['opt-music', 'opt-sfx']) {
       $(id).addEventListener('input', () => handlers.setting(id.slice(4), parseFloat($(id).value)));
     }
+  }
+
+  // True while the Back up / Restore window is open (table shortcuts pause).
+  get dialogOpen() {
+    return this.saveCodes.isOpen;
   }
 
   // Swap mouse wording for touch wording on phones and tablets.
