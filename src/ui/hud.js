@@ -15,6 +15,7 @@ export class Hud {
       const b = document.createElement('button');
       b.className = 'chip-btn';
       b.title = `${money(d)} chip (${i + 1})`;
+      b.setAttribute('aria-label', `${money(d)} chip`);
       b.style.backgroundImage = `url(${makeChipTextures(d).face.image.toDataURL()})`;
       b.addEventListener('click', () => handlers.selectChip(d));
       chips.appendChild(b);
@@ -27,9 +28,24 @@ export class Hud {
     on('btn-undo', () => handlers.undo());
     on('btn-rebet', () => handlers.rebet());
     on('btn-double', () => handlers.double());
-    on('btn-settings', () => $('settings').classList.toggle('hidden'));
-    on('btn-help', () => $('help').classList.remove('hidden'));
-    on('btn-help-close', () => $('help').classList.add('hidden'));
+    on('btn-settings', () => this.toggleSettings());
+    on('btn-help', () => this.toggleHelp(true));
+    on('btn-help-close', () => this.toggleHelp(false));
+    // Settings close when you click back onto the table; the help card closes on its backdrop.
+    document.addEventListener('pointerdown', (e) => {
+      // The save code window opens from Settings, so taps in it keep Settings open.
+      if (!e.target.closest('#settings, #btn-settings, #save-code')) this.toggleSettings(false);
+    });
+    $('help').addEventListener('click', (e) => {
+      if (e.target === $('help')) this.toggleHelp(false);
+    });
+    window.addEventListener('keydown', (e) => {
+      // The save code window handles its own Escape (one step back), so leave Settings open.
+      if (e.key === 'Escape' && !e.defaultPrevented && !this.dialogOpen) {
+        this.toggleHelp(false);
+        this.toggleSettings(false);
+      }
+    });
     on('btn-reset', () => handlers.resetBankroll());
     this.saveCodes = new SaveCodeDialog(handlers, (text, seconds) => this.toast(text, seconds));
 
@@ -44,6 +60,20 @@ export class Hud {
   // True while the Back up / Restore window is open (table shortcuts pause).
   get dialogOpen() {
     return this.saveCodes.isOpen;
+  }
+
+  get helpOpen() {
+    return !$('help').classList.contains('hidden');
+  }
+
+  toggleHelp(open = !this.helpOpen) {
+    $('help').classList.toggle('hidden', !open);
+    if (open) $('btn-help-close').focus();
+  }
+
+  toggleSettings(open = $('settings').classList.contains('hidden')) {
+    $('settings').classList.toggle('hidden', !open);
+    $('btn-settings').setAttribute('aria-expanded', String(open));
   }
 
   // Swap mouse wording for touch wording on phones and tablets.
@@ -71,11 +101,14 @@ export class Hud {
   setLastNet(net) {
     const el = $('last-net');
     el.textContent = net == null ? '—' : `${net > 0 ? '+' : ''}${money(net)}`;
-    el.style.color = net > 0 ? '#b8f5c9' : '';
+    el.style.color = net > 0 ? '#b8f5c9' : net < 0 ? '#ff9c9c' : '';
   }
 
   selectChip(denom) {
-    for (const [d, b] of this.chipButtons) b.classList.toggle('selected', d === denom);
+    for (const [d, b] of this.chipButtons) {
+      b.classList.toggle('selected', d === denom);
+      b.setAttribute('aria-pressed', String(d === denom));
+    }
   }
 
   // phase: 'betting' | 'dealing'

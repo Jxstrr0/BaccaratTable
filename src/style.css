@@ -86,6 +86,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .slider { justify-content: space-between; }
 .slider input { width: 130px; accent-color: var(--gold); }
 .toggle input { accent-color: var(--gold); width: 16px; height: 16px; }
+kbd { font: 600 10px var(--sans); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
 .stats { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); margin: 10px 0; padding-top: 10px; line-height: 1.7; }
 .stats b { color: var(--ink); font-weight: 500; }
 

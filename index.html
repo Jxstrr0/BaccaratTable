@@ -7,6 +7,16 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b3d2e' stroke='%23d9b56a' stroke-width='4'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23d9b56a' font-family='Georgia'%3EP%3C/text%3E%3C/svg%3E" />
     <meta name="author" content="Longlight Interactive" />
     <meta name="description" content="A private high-limit baccarat table in a night-time penthouse. Your own croupier, your own skyline." />
+    <meta name="theme-color" content="#05060a" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Longlight Interactive" />
+    <meta property="og:title" content="Penthouse Baccarat" />
+    <meta property="og:description" content="A private high-limit baccarat table in a night-time penthouse. Your own croupier, your own skyline." />
+    <meta property="og:url" content="https://jxstrr0.github.io/BaccaratTable/" />
+    <meta property="og:image" content="https://jxstrr0.github.io/BaccaratTable/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -36,13 +46,13 @@
       </div>
 
       <div class="top-right">
-        <button class="icon-btn" id="btn-help" title="How to play">?</button>
-        <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
+        <button class="icon-btn" id="btn-help" title="How to play (H)" aria-label="How to play">?</button>
+        <button class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings" aria-controls="settings" aria-expanded="false">⚙</button>
       </div>
 
-      <div id="settings" class="panel settings hidden">
+      <div id="settings" class="panel settings hidden" role="dialog" aria-label="Settings">
         <h3>Settings</h3>
-        <label class="toggle"><input type="checkbox" id="opt-sound" checked /> <span>Sound</span></label>
+        <label class="toggle"><input type="checkbox" id="opt-sound" checked /> <span>Sound <kbd>M</kbd></span></label>
         <label class="slider"><span>Music</span><input type="range" id="opt-music" min="0" max="1" step="0.01" value="0.35" /></label>
         <label class="slider"><span>Effects</span><input type="range" id="opt-sfx" min="0" max="1" step="0.01" value="0.8" /></label>
         <label class="toggle"><input type="checkbox" id="opt-fast" /> <span>Fast dealing</span></label>
@@ -66,12 +76,12 @@
 
       <div id="score-player" class="score-badge player hidden"><div class="head"><span class="side">Player</span><span class="tag"></span></div><div class="total">–</div><div class="cards"></div></div>
       <div id="score-banker" class="score-badge banker hidden"><div class="head"><span class="side">Banker</span><span class="tag"></span></div><div class="total">–</div><div class="cards"></div></div>
-      <div id="callout" class="callout"></div>
-      <div id="banner" class="banner"></div>
-      <div id="toast" class="toast"></div>
+      <div id="callout" class="callout" role="status" aria-live="polite"></div>
+      <div id="banner" class="banner" role="status" aria-live="polite"></div>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
       <div id="bet-bar" class="bottom">
-        <div id="chips" class="chips"></div>
+        <div id="chips" class="chips" role="group" aria-label="Chip value"></div>
         <div class="actions">
           <button class="ghost-btn" id="btn-undo" title="Undo (Backspace)">Undo</button>
           <button class="ghost-btn" id="btn-clear" title="Clear (C)">Clear</button>
@@ -85,8 +95,8 @@
     </div>
 
     <div id="help" class="overlay hidden">
-      <div class="panel help">
-        <h2>Punto Banco</h2>
+      <div class="panel help" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <h2 id="help-title">Punto Banco</h2>
         <p>Bet on which hand finishes closer to <b>9</b>: Player or Banker. Cards 2–9 count at face value, aces count 1, and tens and court cards count 0. Only the last digit of the total counts, so 7 + 8 = 5.</p>
         <p>The dealer follows fixed drawing rules. Either hand totalling 8 or 9 on two cards is a <i>natural</i>, and the coup ends there. Otherwise Player draws on 0–5, and Banker draws according to the tableau.</p>
         <table>
@@ -96,7 +106,7 @@
           <tr><td>Player / Banker Pair</td><td>11 : 1 when the first two cards pair</td></tr>
         </table>
         <p class="fine">Touch: tap a spot to bet · press and hold to take a chip back · drag to look around · pinch to lean in.</p>
-        <p class="fine">Keys: <b>1–5</b> chips · <b>Space</b> deal · <b>R</b> rebet · <b>D</b> double · <b>C</b> clear · <b>Backspace</b> undo</p>
+        <p class="fine">Keys: <b>1–5</b> chips · <b>Space</b> deal · <b>R</b> rebet · <b>D</b> double · <b>C</b> clear · <b>Backspace</b> undo · <b>M</b> sound · <b>H</b> this guide · <b>Esc</b> close</p>
         <p class="fine studio-credit">Penthouse Baccarat · © 2026 Longlight Interactive</p>
         <button class="gold-btn" id="btn-help-close">Back to the table</button>
       </div>
