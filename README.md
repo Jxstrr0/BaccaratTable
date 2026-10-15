@@ -29,6 +29,7 @@ npm run dev      # http://localhost:5173
 | Right-drag / scroll | Look around / lean in |
 | `1`–`5` | Select chip ($100 → $25K) |
 | `Space` · `R` · `D` · `C` · `Backspace` | Deal · rebet · double · clear · undo |
+| `M` · `H` · `Esc` | Sound on/off · how to play · close panels |
 
 On touch screens: tap a spot to bet, press and hold to take a chip back, drag with one finger to look around,
 and pinch to lean in.
@@ -57,3 +58,13 @@ Bankroll, settings and stats are saved in your browser. `npm test` runs the rule
 | `src/audio/audio.js` | Procedural Web Audio: card/chip foley, lounge music, room tone |
 
 Third-party textures and HDRIs are CC0 — see [CREDITS.md](CREDITS.md).
+
+## Status
+
+**v1.0.0 — final.** The game is feature-complete and parked. Ideas if it's picked up again:
+
+- **Roads:** Big Road / Big Eye Boy scoreboards alongside the bead road, and keep the road through a reload.
+- **Squeeze:** an optional player-controlled card squeeze on big bets.
+- **Bundle:** split three.js into its own cached chunk (the single bundle is ~730 kB, ~195 kB gzipped).
+- **Polish:** quality presets (low/high) next to the adaptive resolution, and a reduced-motion setting.
+- **Table:** additional rooms or table themes, and a no-commission (EZ Baccarat) variant.

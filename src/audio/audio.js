@@ -91,6 +91,13 @@ export class AudioEngine {
     return this._muted;
   }
 
+  // Music and room tone stop while the tab is in the background and pick up on return.
+  setBackgrounded(hidden) {
+    if (!this.ctx) return;
+    if (hidden) this.ctx.suspend().catch(() => {});
+    else this.ctx.resume().catch(() => {});
+  }
+
   setMusicVolume(v) {
     this._musicVol = clamp(+v || 0, 0, 1);
     this._applyVolumes();
